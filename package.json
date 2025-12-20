@@ -1,0 +1,22 @@
+{
+    "name": "news-automation",
+    "version": "1.0.0",
+    "description": "취업준비를 위한 산업/기업 뉴스 자동 수집 시스템",
+    "main": "src/index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node src/index.js",
+        "test": "node src/index.js --test",
+        "schedule": "node src/scheduler.js",
+        "setup": "node src/setup.js"
+    },
+    "dependencies": {
+        "@google/generative-ai": "^0.21.0",
+        "@notionhq/client": "^2.2.15",
+        "axios": "^1.7.9",
+        "cheerio": "^1.0.0",
+        "dotenv": "^16.4.7",
+        "node-cron": "^3.0.3",
+        "rss-parser": "^3.13.0"
+    }
+}

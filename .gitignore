@@ -1,0 +1,17 @@
+# 환경 변수 파일 (절대 올리지 않음)
+.env
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# 로그
+*.log
