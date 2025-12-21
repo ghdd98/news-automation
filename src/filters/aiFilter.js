@@ -50,7 +50,7 @@ async function fetchArticleContent(url, retries = 2) {
       for (const selector of selectors) {
         const content = $(selector).text().trim();
         if (content && content.length > 100) {
-          const result = content.substring(0, 2500);
+          const result = content.substring(0, 1500); // TPM 절약
           contentCache.set(url, result);
           return result;
         }
@@ -196,7 +196,7 @@ export async function filterAndSummarizeWithAI(newsItems) {
         console.log(`   처리 중... ${processed}/${newsItems.length} (핵심: ${critical.length}, 참고: ${reference.length}, 제외: ${excluded}) [${MODELS[currentModelIndex].name}]`);
       }
 
-      await sleep(2500); // RPM 30 제한 대응 (2초+ 간격)
+      await sleep(8000); // TPM 15K 제한 대응 (분당 ~7개)
     } catch (error) {
       console.error(`분석 실패: ${item.title}`, error.message);
       reference.push({ ...item, score: 4, keywords: [] });
