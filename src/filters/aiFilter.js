@@ -6,9 +6,12 @@ dotenv.config();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // 모델 폴백 설정 (사용자 계정 한도 기준)
+// 모델 폴백 설정 (순차적 전환)
 const MODELS = [
-  { name: 'gemma-3-27b-it', instance: null },  // RPM 30, RPD 14,400 (가장 넉넉!)
-  { name: 'gemma-3-12b-it', instance: null }   // RPM 30, RPD 14,400 (보조)
+  { name: 'gemma-3-27b-it', instance: null }, // 메인 (고성능)
+  { name: 'gemma-3-12b-it', instance: null }, // 1차 백업
+  { name: 'gemma-3-4b-it', instance: null },  // 2차 백업 (경량)
+  { name: 'gemma-3-1b-it', instance: null }   // 3차 백업 (초경량)
 ];
 
 // 모델 인스턴스 초기화
