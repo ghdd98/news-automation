@@ -174,7 +174,9 @@ export async function filterAndSummarizeWithAI(newsItems) {
   let processed = 0;
   for (const item of newsItems) {
     try {
-      const articleContent = await fetchArticleContent(item.link);
+      // 토큰 절약을 위해 본문 크롤링 생략 (제목 + 설명만 사용)
+      // fetchArticleContent(item.link) 제거
+      const articleContent = null;
       const analysis = await analyzeWithAI(item, articleContent);
 
       const enrichedItem = {
@@ -196,14 +198,16 @@ export async function filterAndSummarizeWithAI(newsItems) {
         console.log(`   처리 중... ${processed}/${newsItems.length} (핵심: ${critical.length}, 참고: ${reference.length}, 제외: ${excluded}) [${MODELS[currentModelIndex].name}]`);
       }
 
-      await sleep(8000); // TPM 15K 제한 대응 (분당 ~7개)
+      // 크롤링 부하가 없으므로 대기 시간 단축 (2초 → 1초)
+      // TPM 15K, 요청당 약 400토큰 -> 분당 37개 가능
+      await sleep(2000);
     } catch (error) {
       console.error(`분석 실패: ${item.title}`, error.message);
       reference.push({ ...item, score: 4, keywords: [] });
     }
   }
 
-  // 캐시 정리
+  // 캐시 정리 (사용 안 함)
   contentCache.clear();
 
   console.log(`✅ [3단계 AI] 완료`);
