@@ -10,6 +10,7 @@ import { collectNaverRss } from './collectors/naverRss.js';
 import { deduplicateNews } from './filters/deduplicator.js';
 import { filterByKeywords } from './filters/keywordFilter.js';
 import { filterByCompany } from './filters/companyFilter.js';
+import { preFilterNews } from './filters/preFilter.js';
 
 // 설정
 import INDUSTRY_KEYWORDS from './config/keywords.js';
@@ -54,6 +55,10 @@ async function testCollection() {
         // 4. 2단계: 기업명 필터링
         const companyFiltered = filterByCompany(keywordFiltered);
 
+        // 5. 3단계: 사전 필터링
+        console.log('\n🎯 [사전 필터링]');
+        const preFiltered = preFilterNews(companyFiltered);
+
         // 결과 요약
         console.log('\n========================================');
         console.log('📊 테스트 결과 요약');
@@ -62,7 +67,8 @@ async function testCollection() {
         console.log(`   중복 제거 후:  ${uniqueNews.length}개`);
         console.log(`   키워드 필터:   ${keywordFiltered.length}개`);
         console.log(`   기업명 매칭:   ${companyFiltered.length}개`);
-        console.log(`   → AI 분석 대상: ${companyFiltered.length}개`);
+        console.log(`   사전 필터:     ${preFiltered.length}개`);
+        console.log(`   → AI 분석 대상: ${preFiltered.length}개`);
         console.log('========================================\n');
 
     } catch (error) {

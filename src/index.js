@@ -10,6 +10,7 @@ import { collectNaverRss } from './collectors/naverRss.js';
 import { deduplicateNews } from './filters/deduplicator.js';
 import { filterByKeywords } from './filters/keywordFilter.js';
 import { filterByCompany } from './filters/companyFilter.js';
+import { preFilterNews } from './filters/preFilter.js';
 import { filterAndSummarizeWithAI } from './filters/aiFilter.js';
 
 // 저장
@@ -59,9 +60,13 @@ async function main() {
         // 4. 2단계: 기업명 필터링
         const companyFiltered = filterByCompany(keywordFiltered);
 
-        // 5. 3단계: AI 분석 (본문 분석)
+        // 5. 3단계: 사전 필터링 (광고성/무관 기사 제거)
+        console.log('\n🎯 [사전 필터링]');
+        const preFiltered = preFilterNews(companyFiltered);
+
+        // 6. 4단계: AI 분석 (본문 분석)
         console.log('\n🤖 [AI 분석 단계]');
-        const { critical, reference } = await filterAndSummarizeWithAI(companyFiltered);
+        const { critical, reference } = await filterAndSummarizeWithAI(preFiltered);
 
         // 6. 저장
         console.log('\n💾 [저장 단계]');
