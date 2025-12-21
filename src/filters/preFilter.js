@@ -257,12 +257,6 @@ export function preFilterNews(newsItems) {
     for (const item of newsItems) {
         const fullText = `${item.title} ${item.description || ''}`;
 
-        // 1. 광고성 패턴 체크 (무조건 제외)
-        if (hasExcludePattern(fullText)) {
-            excluded.adPattern++;
-            continue;
-        }
-
         // 2. 주요 언론사 체크 (국내/해외 공통 필수 조건)
         if (!isMajorSource(item)) {
             excluded.notMajorSource++;
@@ -275,7 +269,6 @@ export function preFilterNews(newsItems) {
         // 3. 글로벌 뉴스 필터링
         if (item.isGlobal) {
             // 주요 언론사 AND (우선순위 키워드 OR 기업명)
-            // (기업명으로 검색했지만, 내용에도 기업명이 있는지 or 핵심 키워드가 있는지)
             if (priorityMatch || hasCompany) {
                 passed.push({
                     ...item,
