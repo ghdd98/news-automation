@@ -1,7 +1,8 @@
 /**
  * AI 분석 전 사전 필터링
- * 제목 + 설명을 분석하여 광고성/무관 기사 제거
- * ※ 비즈니스 키워드 요구 제거 - 제외 패턴만 체크
+ * 1. 광고/무관 패턴 제외
+ * 2. 우선순위 키워드 체크
+ * 3. 주요 언론사 우선
  */
 
 // ==================== 제외 패턴 ====================
@@ -69,36 +70,101 @@ const EXCLUDE_PATTERNS = [
     /복권 당첨/, /로또 번호/, /당첨번호 공개/
 ];
 
+// ==================== 우선순위 키워드 (핵심 비즈니스) ====================
+const PRIORITY_KEYWORDS = [
+    // 비즈니스 활동
+    '수주', '계약', 'MOU', '협약', '파트너십', '제휴', '공급계약', '납품',
+
+    // 재무/실적
+    '실적', '매출', '영업이익', '순이익', '분기', '연간', '흑자', '적자', '실적발표',
+    '조원', '억원', '전년대비', '성장',
+
+    // M&A/투자
+    '인수', '합병', 'M&A', '투자', '투자유치', '펀딩', 'IPO', '상장', '지분',
+    '증자', '배당',
+
+    // 제품/기술/생산
+    '신제품', '출시', '개발', '양산', '생산', '공장', '증설', '설비',
+    '기술', '특허', 'R&D', '연구소', '혁신',
+
+    // 조직/인사
+    'CEO', '대표이사', '사장', '회장', '임원', '인사', '조직개편', '채용',
+
+    // 해외/수출
+    '수출', '해외진출', '글로벌', '북미', '유럽', '중국',
+
+    // 산업 핵심 키워드
+    '반도체', 'HBM', '파운드리', 'AI칩', '배터리', '전기차', '자율주행',
+    'LNG선', '컨테이너선', '방산', 'K방산'
+];
+
+// ==================== 주요 경제 언론사 ====================
+const MAJOR_SOURCES = [
+    // 1순위 - 주요 경제지
+    'hankyung.com', '한국경제', '한경',
+    'mk.co.kr', '매일경제', '매경',
+    'sedaily.com', '서울경제',
+    'yonhapnews', '연합뉴스',
+
+    // 2순위 - IT/산업 전문
+    'etnews.com', '전자신문',
+    'thelec.kr', '더일렉',
+    'theelec.kr',
+    'mt.co.kr', '머니투데이',
+    'asiae.co.kr', '아시아경제',
+
+    // 3순위 - 주요 언론
+    'chosun.com', '조선일보', '조선비즈',
+    'donga.com', '동아일보',
+    'joongang.co.kr', '중앙일보',
+    'hani.co.kr', '한겨레',
+    'khan.co.kr', '경향신문'
+];
+
 /**
- * 광고성/무관 패턴 체크
+ * 제외 패턴 체크
  */
 function hasExcludePattern(text) {
     return EXCLUDE_PATTERNS.some(pattern => pattern.test(text));
 }
 
 /**
- * 설명문 품질 체크 (최소 30자)
+ * 우선순위 키워드 체크
  */
-function hasQualityDescription(description) {
-    if (!description) return true; // 설명 없으면 통과 (제목만으로 판단)
-    return description.length >= 30;
+function hasPriorityKeyword(text) {
+    const lowerText = text.toLowerCase();
+    for (const keyword of PRIORITY_KEYWORDS) {
+        if (lowerText.includes(keyword.toLowerCase())) {
+            return keyword;
+        }
+    }
+    return null;
+}
+
+/**
+ * 주요 언론사 체크
+ */
+function isMajorSource(link) {
+    if (!link) return false;
+    const lowerLink = link.toLowerCase();
+    return MAJOR_SOURCES.some(source => lowerLink.includes(source.toLowerCase()));
 }
 
 /**
  * 사전 필터링 메인 함수
- * ※ 비즈니스 키워드 요구 없이 제외 패턴만 체크
  */
 export function preFilterNews(newsItems) {
     const passed = [];
     const excluded = {
         adPattern: 0,
+        noPriorityKeyword: 0,
         lowQuality: 0
     };
 
     for (const item of newsItems) {
         const fullText = `${item.title} ${item.description || ''}`;
 
-        // 1. 광고성 패턴 체크
+        // 1. 광고성 패턴 체크 (무조건 제외)
         if (hasExcludePattern(fullText)) {
             excluded.adPattern++;
             continue;
@@ -110,21 +176,44 @@ export function preFilterNews(newsItems) {
             continue;
         }
 
-        // 3. 설명문 품질 체크 (너무 짧으면 제외)
-        if (item.description && !hasQualityDescription(item.description)) {
-            excluded.lowQuality++;
+        // 3. 우선순위 키워드 또는 기업명 매칭 체크
+        const priorityMatch = hasPriorityKeyword(fullText);
+        const hasCompany = item.companies && item.companies.length > 0;
+        const majorSource = isMajorSource(item.link);
+
+        // 통과 조건: 우선순위 키워드가 있거나 + 기업명 매칭 + 주요 언론사
+        if (priorityMatch || (hasCompany && majorSource)) {
+            passed.push({
+                ...item,
+                priorityKeyword: priorityMatch,
+                isMajorSource: majorSource
+            });
             continue;
         }
 
-        passed.push(item);
+        // 기업명이 있고 우선순위 키워드가 없어도 통과 (단, 표시)
+        if (hasCompany) {
+            passed.push({
+                ...item,
+                priorityKeyword: null,
+                isMajorSource: majorSource
+            });
+            continue;
+        }
+
+        excluded.noPriorityKeyword++;
     }
 
     const globalCount = passed.filter(n => n.isGlobal).length;
     const domesticCount = passed.length - globalCount;
+    const priorityCount = passed.filter(n => n.priorityKeyword).length;
+    const majorSourceCount = passed.filter(n => n.isMajorSource).length;
 
     console.log(`🎯 [사전 필터] ${newsItems.length}개 → ${passed.length}개 통과`);
     console.log(`   ├─ 광고/무관 제외: ${excluded.adPattern}개`);
-    console.log(`   ├─ 저품질: ${excluded.lowQuality}개`);
+    console.log(`   ├─ 우선순위 키워드 없음: ${excluded.noPriorityKeyword}개`);
+    console.log(`   ├─ 우선순위 키워드 매칭: ${priorityCount}개`);
+    console.log(`   ├─ 주요 언론사: ${majorSourceCount}개`);
     console.log(`   └─ 통과 (국내: ${domesticCount}, 해외: ${globalCount})`);
 
     return passed;
