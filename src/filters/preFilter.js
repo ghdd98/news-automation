@@ -221,18 +221,26 @@ export function preFilterNews(newsItems) {
             continue;
         }
 
-        // 2. 글로벌 뉴스는 바로 통과
-        if (item.isGlobal) {
-            passed.push(item);
-            continue;
-        }
-
-        // 3. 우선순위 키워드 또는 기업명 매칭 체크
+        // 2. 우선순위 키워드 체크 (국내/해외 모두 적용)
         const priorityMatch = hasPriorityKeyword(fullText);
         const hasCompany = item.companies && item.companies.length > 0;
         const majorSource = isMajorSource(item.link);
 
-        // 통과 조건: 우선순위 키워드가 있거나 + 기업명 매칭 + 주요 언론사
+        // 3. 글로벌 뉴스도 우선순위 키워드 필터 적용
+        if (item.isGlobal) {
+            if (priorityMatch) {
+                passed.push({
+                    ...item,
+                    priorityKeyword: priorityMatch,
+                    isMajorSource: false
+                });
+            } else {
+                excluded.noPriorityKeyword++;
+            }
+            continue;
+        }
+
+        // 4. 국내 뉴스: 우선순위 키워드가 있거나 + 기업명 매칭 + 주요 언론사
         if (priorityMatch || (hasCompany && majorSource)) {
             passed.push({
                 ...item,
