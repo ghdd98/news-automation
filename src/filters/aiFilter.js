@@ -1,6 +1,4 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import axios from 'axios';
-import * as cheerio from 'cheerio';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -20,53 +18,7 @@ MODELS.forEach(m => {
 
 let currentModelIndex = 0;
 
-// 본문 캐시 (같은 URL 재요청 방지)
-const contentCache = new Map();
-
-/**
- * 뉴스 본문 가져오기 (캐시 + 재시도)
- */
-async function fetchArticleContent(url, retries = 2) {
-  if (contentCache.has(url)) {
-    return contentCache.get(url);
-  }
-
-  for (let i = 0; i <= retries; i++) {
-    try {
-      const response = await axios.get(url, {
-        timeout: 5000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-      });
-
-      const $ = cheerio.load(response.data);
-      const selectors = [
-        'article', '.article-body', '.news-content', '.article_body',
-        '#articleBodyContents', '.newsct_article', '#newsEndContents',
-        '.news_end', '.article_txt', '#articeBody', '.view_cont'
-      ];
-
-      for (const selector of selectors) {
-        const content = $(selector).text().trim();
-        if (content && content.length > 100) {
-          const result = content.substring(0, 1500); // TPM 절약
-          contentCache.set(url, result);
-          return result;
-        }
-      }
-
-      const fallback = $('body').text().trim().substring(0, 1500);
-      contentCache.set(url, fallback);
-      return fallback;
-    } catch (error) {
-      if (i < retries) await sleep(500);
-    }
-  }
-
-  contentCache.set(url, null);
-  return null;
-}
+// (Optimization: Crawling logic removed)
 
 /**
  * AI로 뉴스 평가 (모델 폴백 지원)
@@ -220,8 +172,7 @@ export async function filterAndSummarizeWithAI(newsItems) {
     }
   }
 
-  // 캐시 정리
-  contentCache.clear();
+  // 캐시 정리 (removed)
 
   console.log(`✅ [3단계 AI] 완료`);
   console.log(`   🔥 핵심: ${critical.length}개`);
