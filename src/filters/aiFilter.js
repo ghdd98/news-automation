@@ -174,19 +174,25 @@ export async function filterAndSummarizeWithAI(newsItems) {
   let processed = 0;
   for (const item of newsItems) {
     try {
-      // 1. Description 확인: 내용이 충분하면 크롤링 생략 (토큰/시간 절약)
+      // 1. Description 확인
+      // 본문 크롤링은 수행하지 않음 (사용자 요청: 속도/토큰 절약 + 누락 시 표시)
       let articleContent = null;
-      let delay = 2000; // 기본 대기 2초
+      const delay = 2000; // 2초 대기 (빠른 처리)
 
-      const desc = item.description || '';
-      if (!desc || desc.trim().length < 30) {
-        // 설명이 없거나 너무 짧으면 본문 수집
-        // console.log(`   📝 설명 부족, 본문 수집: ${item.title.substring(0, 15)}...`);
-        articleContent = await fetchArticleContent(item.link);
-        delay = 6000; // 수집 시 대기 시간 증가 (TPM/부하 관리)
+      const desc = item.description ? item.description.trim() : '';
+      if (desc.length < 10) {
+        // 설명이 없으면 AI에게 알릴 대체 텍스트 사용
+        articleContent = "본문 요약 내용이 없습니다. 제목을 바탕으로 유추하세요.";
+      } else {
+        articleContent = desc;
       }
 
       const analysis = await analyzeWithAI(item, articleContent);
+
+      // 설명이 없었던 경우, 키워드에 표시 추가
+      if (desc.length < 10) {
+        analysis.keywords.push("내용확인필요⚠️");
+      }
 
       const enrichedItem = {
         ...item,
