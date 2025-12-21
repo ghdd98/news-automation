@@ -63,7 +63,7 @@ export async function searchGlobalNews(query, industry) {
     try {
         const feed = await parser.parseURL(url);
 
-        return feed.items.slice(0, 5).map(item => {
+        return feed.items.slice(0, 10).map(item => {
             // Google RSS Title format: "Title - Source Name"
             const lastHyphenIndex = item.title?.lastIndexOf(' - ');
             let title = item.title;
@@ -101,10 +101,12 @@ export async function collectGoogleNews(keywordsByIndustry) {
     for (const [industry, keywords] of Object.entries(keywordsByIndustry)) {
         console.log(`🌍 [Google RSS] ${industry} 산업 뉴스 수집 중...`);
 
-        for (const keyword of keywords.slice(0, 2)) {
+        // 모든 키워드 검색 (slice 제거)
+        for (const keyword of keywords) {
             const news = await searchGoogleNews(keyword);
 
-            for (const item of news.slice(0, 10)) {
+            // 상위 20개까지 수집 (개수 증가)
+            for (const item of news.slice(0, 20)) {
                 allNews.push({
                     ...item,
                     industry,
@@ -112,7 +114,8 @@ export async function collectGoogleNews(keywordsByIndustry) {
                 });
             }
 
-            await sleep(200);
+            // 차단 방지를 위해 1초 대기 (안전 모드)
+            await sleep(1000);
         }
     }
 
@@ -132,9 +135,12 @@ export async function collectGlobalNews() {
         console.log(`   📍 ${industry} 산업...`);
 
         for (const company of companies) {
+            // 해외 뉴스도 10개까지 수집 (기존 5개 -> 함수 내부 slice 확인 필요)
             const news = await searchGlobalNews(company, industry);
             allNews.push(...news);
-            await sleep(150);
+
+            // 해외 뉴스도 1초 대기
+            await sleep(1000);
         }
     }
 
