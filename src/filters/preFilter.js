@@ -149,13 +149,13 @@ const PRIORITY_KEYWORDS = [
     '원전', '원자력', 'SMR', '소형모듈원전'
 ];
 
-// ==================== 주요 경제 언론사 ====================
+// ==================== 주요 경제 언론사 및 통신사 ====================
 const MAJOR_SOURCES = [
     // 1순위 - 주요 경제지
     'hankyung.com', '한국경제', '한경',
     'mk.co.kr', '매일경제', '매경',
     'sedaily.com', '서울경제',
-    'yonhapnews', '연합뉴스',
+    'yonhapnews', 'yna.co.kr', '연합뉴스',
 
     // 2순위 - IT/산업 전문
     'etnews.com', '전자신문',
@@ -163,13 +163,16 @@ const MAJOR_SOURCES = [
     'theelec.kr',
     'mt.co.kr', '머니투데이',
     'asiae.co.kr', '아시아경제',
+    'biz.chosun.com', '조선비즈',
 
-    // 3순위 - 주요 언론
-    'chosun.com', '조선일보', '조선비즈',
+    // 3순위 - 주요 일간지 및 통신사
+    'chosun.com', '조선일보',
     'donga.com', '동아일보',
     'joongang.co.kr', '중앙일보',
     'hani.co.kr', '한겨레',
-    'khan.co.kr', '경향신문'
+    'khan.co.kr', '경향신문',
+    'news1.kr', '뉴스1',
+    'newsis.com', '뉴시스'
 ];
 
 /**
@@ -209,6 +212,7 @@ export function preFilterNews(newsItems) {
     const excluded = {
         adPattern: 0,
         noPriorityKeyword: 0,
+        notMajorSource: 0, // 주요 언론사 아님
         lowQuality: 0
     };
 
@@ -221,13 +225,11 @@ export function preFilterNews(newsItems) {
             continue;
         }
 
-        // 2. 우선순위 키워드 체크 (국내/해외 모두 적용)
         const priorityMatch = hasPriorityKeyword(fullText);
-        const hasCompany = item.companies && item.companies.length > 0;
-        const majorSource = isMajorSource(item.link);
 
-        // 3. 글로벌 뉴스도 우선순위 키워드 필터 적용
+        // 2. 글로벌 뉴스
         if (item.isGlobal) {
+            // 우선순위 키워드가 있어야 통과
             if (priorityMatch) {
                 passed.push({
                     ...item,
@@ -240,22 +242,22 @@ export function preFilterNews(newsItems) {
             continue;
         }
 
-        // 4. 국내 뉴스: 우선순위 키워드가 있거나 + 기업명 매칭 + 주요 언론사
-        if (priorityMatch || (hasCompany && majorSource)) {
-            passed.push({
-                ...item,
-                priorityKeyword: priorityMatch,
-                isMajorSource: majorSource
-            });
+        // 3. 국내 뉴스 필터링
+        const hasCompany = item.companies && item.companies.length > 0;
+        const majorSource = isMajorSource(item.link);
+
+        // 조건: (우선순위 키워드 있음 OR 기업명 있음) AND 주요 언론사
+        // 즉, 주요 언론사가 아니면 무조건 탈락 (광고/홍보성 기사 방지)
+        if (!majorSource) {
+            excluded.notMajorSource++;
             continue;
         }
 
-        // 기업명이 있고 우선순위 키워드가 없어도 통과 (단, 표시)
-        if (hasCompany) {
+        if (priorityMatch || hasCompany) {
             passed.push({
                 ...item,
-                priorityKeyword: null,
-                isMajorSource: majorSource
+                priorityKeyword: priorityMatch,
+                isMajorSource: true
             });
             continue;
         }
@@ -265,14 +267,11 @@ export function preFilterNews(newsItems) {
 
     const globalCount = passed.filter(n => n.isGlobal).length;
     const domesticCount = passed.length - globalCount;
-    const priorityCount = passed.filter(n => n.priorityKeyword).length;
-    const majorSourceCount = passed.filter(n => n.isMajorSource).length;
 
     console.log(`🎯 [사전 필터] ${newsItems.length}개 → ${passed.length}개 통과`);
     console.log(`   ├─ 광고/무관 제외: ${excluded.adPattern}개`);
-    console.log(`   ├─ 우선순위 키워드 없음: ${excluded.noPriorityKeyword}개`);
-    console.log(`   ├─ 우선순위 키워드 매칭: ${priorityCount}개`);
-    console.log(`   ├─ 주요 언론사: ${majorSourceCount}개`);
+    console.log(`   ├─ 해외 뉴스 제외 (키워드 없음): ${excluded.noPriorityKeyword}개`);
+    console.log(`   ├─ 국내 뉴스 제외 (비주류 언론사): ${excluded.notMajorSource}개`);
     console.log(`   └─ 통과 (국내: ${domesticCount}, 해외: ${globalCount})`);
 
     return passed;
