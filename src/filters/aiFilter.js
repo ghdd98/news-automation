@@ -7,10 +7,10 @@ dotenv.config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// 모델 폴백 설정 (1순위 → 2순위)
+// 모델 폴백 설정 (안정적인 1.5 Flash를 1순위로 사용)
 const MODELS = [
-  { name: 'gemini-2.5-flash-lite', instance: null },
-  { name: 'gemini-2.0-flash', instance: null }
+  { name: 'gemini-1.5-flash', instance: null }, // RPD 1,500회 (안정적)
+  { name: 'gemini-2.0-flash-exp', instance: null } // 최신 모델 (보조)
 ];
 
 // 모델 인스턴스 초기화
@@ -117,7 +117,7 @@ JSON 형식으로만 답변:
   // 현재 모델부터 시도
   for (let modelIdx = currentModelIndex; modelIdx < MODELS.length; modelIdx++) {
     const currentModel = MODELS[modelIdx];
-    
+
     for (let retry = 0; retry < 3; retry++) {
       try {
         const result = await currentModel.instance.generateContent(prompt);
@@ -135,7 +135,7 @@ JSON 형식으로만 답변:
         return { score: 4, keywords: [] };
       } catch (error) {
         const errorMsg = error.message || '';
-        
+
         // Rate limit 에러 시 모델 전환
         if (errorMsg.includes('429') || errorMsg.includes('quota') || errorMsg.includes('rate')) {
           if (modelIdx < MODELS.length - 1) {
