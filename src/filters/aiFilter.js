@@ -7,10 +7,10 @@ dotenv.config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// 모델 폴백 설정 (안정적인 1.5 Flash를 1순위로 사용)
+// 모델 폴백 설정 (사용자 계정 한도 기준)
 const MODELS = [
-  { name: 'gemini-1.5-flash', instance: null }, // RPD 1,500회 (안정적)
-  { name: 'gemini-2.0-flash-exp', instance: null } // 최신 모델 (보조)
+  { name: 'gemma-3-27b-it', instance: null },  // RPM 30, RPD 14,400 (가장 넉넉!)
+  { name: 'gemma-3-12b-it', instance: null }   // RPM 30, RPD 14,400 (보조)
 ];
 
 // 모델 인스턴스 초기화
@@ -196,7 +196,7 @@ export async function filterAndSummarizeWithAI(newsItems) {
         console.log(`   처리 중... ${processed}/${newsItems.length} (핵심: ${critical.length}, 참고: ${reference.length}, 제외: ${excluded}) [${MODELS[currentModelIndex].name}]`);
       }
 
-      await sleep(7000);
+      await sleep(2500); // RPM 30 제한 대응 (2초+ 간격)
     } catch (error) {
       console.error(`분석 실패: ${item.title}`, error.message);
       reference.push({ ...item, score: 4, keywords: [] });
