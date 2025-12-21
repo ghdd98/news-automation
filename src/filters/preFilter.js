@@ -175,6 +175,24 @@ const MAJOR_SOURCES = [
     'newsis.com', '뉴시스'
 ];
 
+// ==================== 해외 주요 언론사 (글로벌) ====================
+const MAJOR_GLOBAL_SOURCES = [
+    // Finance & Biz
+    'Bloomberg', 'Reuters', 'Wall Street Journal', 'WSJ',
+    'Financial Times', 'FT.com', 'CNBC', 'Forbes', 'Fortune',
+    'Business Insider', 'MarketWatch', 'Barron', 'Investopedia',
+    'The Economist', 'Yahoo Finance',
+
+    // Tech
+    'TechCrunch', 'The Verge', 'Wired', 'VentureBeat',
+    'Engadget', 'CNET', 'ZDNet', 'Ars Technica',
+    'Tom\'s Hardware', 'AnandTech',
+
+    // General Major
+    'New York Times', 'NYT', 'Washington Post', 'BBC', 'CNN',
+    'Guardian', 'Associated Press', 'AP News'
+];
+
 /**
  * 제외 패턴 체크
  */
@@ -196,11 +214,31 @@ function hasPriorityKeyword(text) {
 }
 
 /**
- * 주요 언론사 체크
+ * 주요 언론사 체크 (국내/해외 통합)
  */
-function isMajorSource(link) {
-    if (!link) return false;
+function isMajorSource(item) {
+    const link = item.link || '';
+    const publisher = item.publisher || '';
     const lowerLink = link.toLowerCase();
+    const lowerPublisher = publisher.toLowerCase();
+
+    // 1. 글로벌 뉴스인 경우: 해외 주요 언론사 체크
+    if (item.isGlobal) {
+        return MAJOR_GLOBAL_SOURCES.some(source =>
+            lowerPublisher.includes(source.toLowerCase()) ||
+            lowerLink.includes(source.toLowerCase())
+        );
+    }
+
+    // 2. 국내 뉴스인 경우: 국내 주요 언론사 체크
+    // publisher 정보가 있으면 우선 확인
+    if (publisher) {
+        if (MAJOR_SOURCES.some(source => lowerPublisher.includes(source.toLowerCase()))) {
+            return true;
+        }
+    }
+
+    // link 도메인 확인
     return MAJOR_SOURCES.some(source => lowerLink.includes(source.toLowerCase()));
 }
 
@@ -212,7 +250,7 @@ export function preFilterNews(newsItems) {
     const excluded = {
         adPattern: 0,
         noPriorityKeyword: 0,
-        notMajorSource: 0, // 주요 언론사 아님
+        notMajorSource: 0,
         lowQuality: 0
     };
 
@@ -225,16 +263,24 @@ export function preFilterNews(newsItems) {
             continue;
         }
 
-        const priorityMatch = hasPriorityKeyword(fullText);
+        // 2. 주요 언론사 체크 (국내/해외 공통 필수 조건)
+        if (!isMajorSource(item)) {
+            excluded.notMajorSource++;
+            continue;
+        }
 
-        // 2. 글로벌 뉴스
+        const priorityMatch = hasPriorityKeyword(fullText);
+        const hasCompany = item.companies && item.companies.length > 0;
+
+        // 3. 글로벌 뉴스 필터링
         if (item.isGlobal) {
-            // 우선순위 키워드가 있어야 통과
-            if (priorityMatch) {
+            // 주요 언론사 AND (우선순위 키워드 OR 기업명)
+            // (기업명으로 검색했지만, 내용에도 기업명이 있는지 or 핵심 키워드가 있는지)
+            if (priorityMatch || hasCompany) {
                 passed.push({
                     ...item,
                     priorityKeyword: priorityMatch,
-                    isMajorSource: false
+                    isMajorSource: true
                 });
             } else {
                 excluded.noPriorityKeyword++;
@@ -242,17 +288,8 @@ export function preFilterNews(newsItems) {
             continue;
         }
 
-        // 3. 국내 뉴스 필터링
-        const hasCompany = item.companies && item.companies.length > 0;
-        const majorSource = isMajorSource(item.link);
-
-        // 조건: (우선순위 키워드 있음 OR 기업명 있음) AND 주요 언론사
-        // 즉, 주요 언론사가 아니면 무조건 탈락 (광고/홍보성 기사 방지)
-        if (!majorSource) {
-            excluded.notMajorSource++;
-            continue;
-        }
-
+        // 4. 국내 뉴스 필터링
+        // 주요 언론사 AND (우선순위 키워드 OR 기업명)
         if (priorityMatch || hasCompany) {
             passed.push({
                 ...item,
@@ -270,8 +307,8 @@ export function preFilterNews(newsItems) {
 
     console.log(`🎯 [사전 필터] ${newsItems.length}개 → ${passed.length}개 통과`);
     console.log(`   ├─ 광고/무관 제외: ${excluded.adPattern}개`);
-    console.log(`   ├─ 해외 뉴스 제외 (키워드 없음): ${excluded.noPriorityKeyword}개`);
-    console.log(`   ├─ 국내 뉴스 제외 (비주류 언론사): ${excluded.notMajorSource}개`);
+    console.log(`   ├─ 비주류 언론사 제외: ${excluded.notMajorSource}개`);
+    console.log(`   ├─ 키워드/기업명 미매칭 제외: ${excluded.noPriorityKeyword}개`);
     console.log(`   └─ 통과 (국내: ${domesticCount}, 해외: ${globalCount})`);
 
     return passed;

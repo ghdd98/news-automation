@@ -26,14 +26,27 @@ export async function searchGoogleNews(query) {
     try {
         const feed = await parser.parseURL(url);
 
-        return feed.items.map(item => ({
-            title: item.title?.split(' - ')[0] || item.title,
-            description: item.contentSnippet || item.content || '',
-            link: item.link,
-            pubDate: new Date(item.pubDate),
-            source: 'google-rss-kr',
-            isGlobal: false
-        }));
+        return feed.items.map(item => {
+            // Google RSS Title format: "Title - Source Name"
+            const lastHyphenIndex = item.title?.lastIndexOf(' - ');
+            let title = item.title;
+            let publisher = '';
+
+            if (lastHyphenIndex > 0) {
+                title = item.title.substring(0, lastHyphenIndex);
+                publisher = item.title.substring(lastHyphenIndex + 3);
+            }
+
+            return {
+                title: title,
+                description: item.contentSnippet || item.content || '',
+                link: item.link,
+                pubDate: new Date(item.pubDate),
+                source: 'google-rss-kr',
+                publisher: publisher,
+                isGlobal: false
+            };
+        });
     } catch (error) {
         console.error(`Google RSS 수집 오류 (${query}):`, error.message);
         return [];
@@ -50,16 +63,29 @@ export async function searchGlobalNews(query, industry) {
     try {
         const feed = await parser.parseURL(url);
 
-        return feed.items.slice(0, 5).map(item => ({
-            title: `🌐 ${item.title?.split(' - ')[0] || item.title}`,  // 🌐 마커 추가
-            description: item.contentSnippet || item.content || '',
-            link: item.link,
-            pubDate: new Date(item.pubDate),
-            source: 'google-rss-global',
-            isGlobal: true,
-            originalIndustry: industry,
-            searchKeyword: query
-        }));
+        return feed.items.slice(0, 5).map(item => {
+            // Google RSS Title format: "Title - Source Name"
+            const lastHyphenIndex = item.title?.lastIndexOf(' - ');
+            let title = item.title;
+            let publisher = '';
+
+            if (lastHyphenIndex > 0) {
+                title = item.title.substring(0, lastHyphenIndex);
+                publisher = item.title.substring(lastHyphenIndex + 3);
+            }
+
+            return {
+                title: `🌐 ${title}`,  // 🌐 마커 추가
+                description: item.contentSnippet || item.content || '',
+                link: item.link,
+                pubDate: new Date(item.pubDate),
+                source: 'google-rss-global',
+                publisher: publisher,
+                isGlobal: true,
+                originalIndustry: industry,
+                searchKeyword: query
+            };
+        });
     } catch (error) {
         // 조용히 실패 (차단된 URL은 건너뜀)
         return [];
