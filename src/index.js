@@ -71,6 +71,56 @@ async function main() {
         // 6. 저장
         console.log('\n💾 [저장 단계]');
 
+        // 6-1. JSON 데이터 저장 (웹 대시보드용)
+        const outputDir = 'data';
+        await fs.mkdir(outputDir, { recursive: true });
+
+        // 날짜별 백업 및 최신 파일 생성
+        const todayStr = new Date().toISOString().split('T')[0];
+        const resultData = {
+            date: todayStr,
+            updatedAt: new Date().toISOString(),
+            stats: {
+                total: allNews.length,
+                top: critical.length,
+                ref: reference.length
+            },
+            news: {
+                top: critical,
+                reference: reference
+            }
+        };
+
+        // 최신 파일 (웹앱이 읽을 것)
+        await fs.writeFile(`${outputDir}/latest_news.json`, JSON.stringify(resultData, null, 2), 'utf-8');
+        // 백업 파일 (히스토리용)
+        await fs.writeFile(`${outputDir}/news_${todayStr}.json`, JSON.stringify(resultData, null, 2), 'utf-8');
+
+        console.log(`✅ JSON 데이터 저장 완료: data/latest_news.json`);
+
+        // 6-2. 데이터 청소 (15일 이상 된 파일 삭제)
+        try {
+            const files = await fs.readdir(outputDir);
+            const today = new Date();
+            const RETENTION_DAYS = 15;
+
+            for (const file of files) {
+                if (!file.startsWith('news_') || !file.endsWith('.json')) continue;
+
+                const datePart = file.replace('news_', '').replace('.json', '');
+                const fileDate = new Date(datePart);
+                const diffTime = Math.abs(today - fileDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays > RETENTION_DAYS) {
+                    await fs.unlink(`${outputDir}/${file}`);
+                    console.log(`🗑️ 오래된 파일 삭제 완료: ${file}`);
+                }
+            }
+        } catch (cleanupError) {
+            console.error('⚠️ 데이터 청소 중 오류 발생:', cleanupError.message);
+        }
+
         if (process.env.NOTION_DATABASE_ID) {
             await saveToNotion(critical, true);
             await saveToNotion(reference, false);

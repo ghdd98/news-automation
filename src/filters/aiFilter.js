@@ -6,7 +6,7 @@ dotenv.config();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // 모델 폴백 설정 (사용자 계정 한도 기준)
-// 모델 폴백 설정 (순차적 전환)
+// 모델 폴백 설정 (27b 우선 복구)
 const MODELS = [
   { name: 'gemma-3-27b-it', instance: null }, // 메인 (고성능)
   { name: 'gemma-3-12b-it', instance: null }, // 1차 백업
@@ -19,15 +19,18 @@ MODELS.forEach(m => {
   m.instance = genAI.getGenerativeModel({ model: m.name });
 });
 
-let currentModelIndex = 0;
+// Helper to get model instance by name
+function getModel(modelName) {
+  const modelEntry = MODELS.find(m => m.name === modelName);
+  if (!modelEntry || !modelEntry.instance) {
+    throw new Error(`Model instance for ${modelName} not found.`);
+  }
+  return modelEntry.instance;
+}
 
 // (Optimization: Crawling logic removed)
 
 /**
- * AI로 뉴스 평가 (모델 폴백 지원)
- */
-async function analyzeWithAI(newsItem, articleContent) {
-  const content = articleContent || newsItem.description || '';
 
   const prompt = `당신은 취업준비생을 위한 기업 분석가입니다.
 아래 뉴스의 중요도를 평가하세요.

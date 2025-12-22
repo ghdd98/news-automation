@@ -1,0 +1,54 @@
+{
+  "date": "2025-12-22 (Preview)",
+  "updatedAt": "2025-12-22T13:30:00Z",
+  "stats": { "total": 5, "top": 2, "ref": 3 },
+  "news": {
+    "top": [
+       { 
+         "title": "[Demo] 삼성전자, 3나노 2세대 수율 60% 돌파... 대형 고객사 확보 청신호", 
+         "link": "https://naver.com", 
+         "grade": "S", 
+         "companies": [{"name":"삼성전자"}], 
+         "aiKeywords": ["파운드리", "GAA", "수율"],
+         "reason": "반도체 핵심 기술 돌파 및 실적 개선 기대"
+       },
+       { 
+         "title": "[Demo] SK하이닉스, HBM3E 2025년 물량 완판... '엔비디아 동맹' 굳건", 
+         "link": "https://naver.com", 
+         "grade": "S", 
+         "companies": [{"name":"SK하이닉스"}], 
+         "aiKeywords": ["HBM", "AI반도체", "실적"],
+         "reason": "AI 반도체 시장 주도권 확인"
+       }
+    ],
+    "reference": [
+       { 
+         "title": "[Demo] 현대차, 인도 법인 상장 추진... 4조원 조달 예상", 
+         "link": "https://naver.com", 
+         "grade": "A", 
+         "category": "자동차", 
+         "companies": [{"name":"현대차"}], 
+         "isGlobal": false,
+         "aiKeywords": ["IPO", "인도매출", "글로벌확장"]
+       },
+       { 
+         "title": "[Demo] Tesla unveils new Optimus Gen 3 robot with tactile sensing", 
+         "link": "https://google.com", 
+         "grade": "A", 
+         "category": "로봇", 
+         "companies": [{"name":"Tesla"}], 
+         "isGlobal": true, 
+         "aiKeywords": ["Humanoid", "AI", "Robotics"] 
+       },
+       { 
+         "title": "[Demo] 한화오션, 카타르 LNG선 4척 수주... 1.2조원 규모", 
+         "link": "https://naver.com", 
+         "grade": "A", 
+         "category": "조선", 
+         "companies": [{"name":"한화오션"}], 
+         "isGlobal": false,
+         "aiKeywords": ["LNG", "수주", "실적"]
+       }
+    ]
+  }
+}
