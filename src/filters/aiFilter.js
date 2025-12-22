@@ -14,6 +14,8 @@ const MODELS = [
   { name: 'gemma-3-1b-it', instance: null }   // 3차 백업 (초경량)
 ];
 
+let currentModelIndex = 0; // 현재 사용 중인 모델 인덱스
+
 // 모델 인스턴스 초기화
 MODELS.forEach(m => {
   m.instance = genAI.getGenerativeModel({ model: m.name });
@@ -28,10 +30,10 @@ function getModel(modelName) {
   return modelEntry.instance;
 }
 
-// (Optimization: Crawling logic removed)
-
 /**
-
+ * 2단계: AI 분석 (개별 뉴스)
+ */
+async function analyzeWithAI(newsItem, content) {
   const prompt = `당신은 취업준비생을 위한 기업 분석가입니다.
 아래 뉴스의 중요도를 평가하세요.
 

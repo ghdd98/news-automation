@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import fs from 'fs/promises';
 dotenv.config();
 
 // 수집기
