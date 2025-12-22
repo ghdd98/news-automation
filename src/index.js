@@ -122,14 +122,12 @@ async function main() {
             console.error('⚠️ 데이터 청소 중 오류 발생:', cleanupError.message);
         }
 
-        if (process.env.NOTION_DATABASE_ID) {
-            await saveToNotion(critical, true);
-            await saveToNotion(reference, false);
-        } else {
-            console.log('⚠️ NOTION_DATABASE_ID가 설정되지 않아 Notion 저장을 건너뜁니다.');
-        }
-
-        await saveToObsidian(critical, reference);
+        // Notion/Obsidian 자동 저장 제거됨
+        // 웹 대시보드(localhost:3000)에서 체크박스로 선택 후 저장하는 방식으로 변경
+        // if (process.env.NOTION_DATABASE_ID) { ... }
+        // await saveToObsidian(critical, reference);
+        console.log('ℹ️ Notion/Obsidian 자동 저장은 비활성화되었습니다.')
+        console.log('   → 웹 대시보드에서 필요한 뉴스만 선택하여 저장하세요.');
 
         // 완료 보고
         console.log('\n========================================');
