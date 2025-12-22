@@ -53,6 +53,15 @@ export async function saveToNotion(newsItems, isCritical = true) {
                 });
                 saved++;
             } catch (error) {
+                console.error(`🚨 Notion 저장 실패 (${item.title}):`);
+                // Notion API 에러 상세 출력
+                if (error.body) {
+                    console.error('   Code:', error.code);
+                    console.error('   Message:', error.message);
+                    // console.error('   Details:', JSON.stringify(error.body)); // 필요시 주석 해제
+                } else {
+                    console.error('   Error:', error.message);
+                }
                 failed++;
             }
         });

@@ -26,7 +26,14 @@ export async function searchNaverNews(query, display = 20) {
             source: 'naver-api'
         }));
     } catch (error) {
-        console.error(`네이버 뉴스 검색 오류 (${query}):`, error.message);
+        console.error(`🚨 네이버 뉴스 검색 오류 (${query}):`);
+        if (error.response) {
+            // 네이버 서버가 보낸 구체적인 에러 메시지 (예: 인증 실패, 한도 초과 등)
+            console.error('   Status:', error.response.status);
+            console.error('   Data:', JSON.stringify(error.response.data));
+        } else {
+            console.error('   Message:', error.message);
+        }
         return [];
     }
 }
