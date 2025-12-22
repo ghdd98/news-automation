@@ -41,22 +41,23 @@ jobs:
           NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
           NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
 
-      - name: 📤 뉴스 리포트 저장 (Git Push)
+      - name: 📤 뉴스 데이터 저장 (Git Push)
         run: |
           git config --global user.name "News Bot"
           git config --global user.email "bot@news-automation.com"
           
-          if [ -d "daily_news" ]; then
-            git add daily_news/
+          if [ -d "data" ]; then
+            git add data/
             
             if ! git diff --staged --quiet; then
-              git commit -m "📰 Daily News Update: $(date +'%Y-%m-%d')"
+              git commit -m "📰 News Update: $(date +'%Y-%m-%d %H:%M')"
               git push
-              echo "✅ 뉴스 리포트가 성공적으로 저장되었습니다."
+              echo "✅ 뉴스 데이터가 성공적으로 저장되었습니다."
             else
               echo "⚠️ 변경된 뉴스가 없습니다."
             fi
           else
-            echo "❌ daily_news 폴더가 생성되지 않았습니다."
+            echo "❌ data 폴더가 생성되지 않았습니다."
             exit 1
           fi
+

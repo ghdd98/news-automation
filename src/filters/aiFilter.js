@@ -5,8 +5,7 @@ dotenv.config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// 모델 폴백 설정 (사용자 계정 한도 기준)
-// 모델 폴백 설정 (27b 우선 복구)
+// 모델 폴백 설정 (27b → 12b → 4b → 1b 순서로 시도)
 const MODELS = [
   { name: 'gemma-3-27b-it', instance: null }, // 메인 (고성능)
   { name: 'gemma-3-12b-it', instance: null }, // 1차 백업
@@ -20,15 +19,6 @@ let currentModelIndex = 0; // 현재 사용 중인 모델 인덱스
 MODELS.forEach(m => {
   m.instance = genAI.getGenerativeModel({ model: m.name });
 });
-
-// Helper to get model instance by name
-function getModel(modelName) {
-  const modelEntry = MODELS.find(m => m.name === modelName);
-  if (!modelEntry || !modelEntry.instance) {
-    throw new Error(`Model instance for ${modelName} not found.`);
-  }
-  return modelEntry.instance;
-}
 
 /**
  * 2단계: AI 분석 (개별 뉴스)
