@@ -6,8 +6,8 @@ import { getCompanyEmoji } from '../filters/companyFilter.js';
 
 dotenv.config();
 
-const VAULT_PATH = process.env.OBSIDIAN_VAULT_PATH;
-const NEWS_FOLDER = 'Daily News';
+// GitHub Actions 환경에서는 프로젝트 루트의 'daily_news' 폴더에 저장 후 Git Push
+const NEWS_FOLDER_NAME = 'daily_news';
 
 /**
  * 날짜별 마크다운 파일 생성
@@ -22,8 +22,10 @@ export async function saveToObsidian(criticalNews, referenceNews) {
         weekday: 'long'
     });
 
+    // 프로젝트 루트 기준 'daily_news' 폴더 사용 (상대 경로)
+    const folderPath = path.join(process.cwd(), NEWS_FOLDER_NAME);
+
     // 폴더 생성
-    const folderPath = path.join(VAULT_PATH, NEWS_FOLDER);
     await fs.mkdir(folderPath, { recursive: true });
 
     // 파일 경로
