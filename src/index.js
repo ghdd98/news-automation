@@ -2,10 +2,10 @@ import dotenv from 'dotenv';
 import fs from 'fs/promises';
 dotenv.config();
 
-// 수집기
+// 수집기 (2개 소스: 네이버 API + Google RSS 국내)
 import { collectNaverNews } from './collectors/naverApi.js';
-import { collectGoogleNews, collectGlobalNews } from './collectors/googleRss.js';
-import { collectNaverRss } from './collectors/naverRss.js';
+import { collectGoogleNews } from './collectors/googleRss.js';
+// naverRss.js, collectGlobalNews 제거됨 - 국내 뉴스에서 해외 기업 키워드로 검색
 
 // 필터
 import { deduplicateNews } from './filters/deduplicator.js';
@@ -31,22 +31,18 @@ async function main() {
     console.log('========================================\n');
 
     try {
-        // 1. 뉴스 수집 (4개 소스)
+        // 1. 뉴스 수집 (2개 소스: 네이버 API, Google RSS 국내)
         console.log('\n📡 [수집 단계]');
-        const [naverNews, googleNews, globalNews, rssNews] = await Promise.all([
+        const [naverNews, googleNews] = await Promise.all([
             collectNaverNews(INDUSTRY_KEYWORDS),
-            collectGoogleNews(INDUSTRY_KEYWORDS),
-            collectGlobalNews(),
-            collectNaverRss()
+            collectGoogleNews(INDUSTRY_KEYWORDS)
         ]);
 
         console.log('\n📊 수집 결과:');
         console.log(`   🇰🇷 네이버 API: ${naverNews.length}개`);
         console.log(`   🇰🇷 Google RSS: ${googleNews.length}개`);
-        console.log(`   🌐 Global RSS: ${globalNews.length}개`);
-        console.log(`   🇰🇷 언론사 RSS: ${rssNews.length}개`);
 
-        const allNews = [...naverNews, ...googleNews, ...globalNews, ...rssNews];
+        const allNews = [...naverNews, ...googleNews];
         console.log(`   ─────────────────`);
         console.log(`   총 수집: ${allNews.length}개`);
 

@@ -152,10 +152,10 @@ export async function filterAndSummarizeWithAI(newsItems) {
 
       if (analysis.score >= 7) {
         critical.push(enrichedItem);
-      } else if (analysis.score >= 4) {
+      } else if (analysis.score >= 5) {  // 변경: 4점 → 5점 이상만 Reference
         reference.push(enrichedItem);
       } else {
-        excluded++;
+        excluded++;  // 1-4점은 제외
       }
 
       processed++;

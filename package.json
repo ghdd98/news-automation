@@ -6,8 +6,6 @@
     "type": "module",
     "scripts": {
         "start": "node src/index.js",
-        "test": "node src/index.js --test",
-        "schedule": "node src/scheduler.js",
         "setup": "node src/setup.js"
     },
     "dependencies": {
@@ -15,7 +13,6 @@
         "@notionhq/client": "^2.2.15",
         "axios": "^1.7.9",
         "dotenv": "^16.4.7",
-        "node-cron": "^3.0.3",
         "rss-parser": "^3.13.0"
     }
 }

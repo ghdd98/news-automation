@@ -6,14 +6,47 @@ const parser = new Parser({
     }
 });
 
-// 산업별 해외 대형 기업 검색어 (영어)
+// 산업별 해외 대형 기업 검색어 (대폭 확장)
 const GLOBAL_COMPANIES = {
-    '자동차': ['Tesla', 'Toyota', 'Volkswagen', 'GM electric vehicle', 'BYD'],
-    '반도체': ['NVIDIA', 'AMD', 'Intel', 'TSMC', 'ASML', 'Qualcomm'],
-    '가전/IT': ['Apple', 'Google AI', 'Microsoft', 'Amazon AWS', 'Meta AI'],
-    '방산': ['Lockheed Martin', 'Raytheon', 'Northrop Grumman'],
-    '조선': ['COSCO shipping', 'Maersk'],
-    '한국기업': ['Samsung Electronics', 'SK Hynix', 'Hyundai Motor', 'LG Electronics', 'Naver', 'Kakao']
+    '자동차': [
+        'Tesla', 'Toyota', 'Volkswagen', 'GM electric vehicle', 'BYD',
+        'Ford EV', 'Rivian', 'Lucid Motors', 'NIO', 'XPeng', 'Li Auto',
+        'BMW electric', 'Mercedes EV', 'Stellantis'
+    ],
+    '반도체': [
+        'NVIDIA', 'AMD', 'Intel', 'TSMC', 'ASML', 'Qualcomm',
+        'Micron', 'Texas Instruments', 'Broadcom', 'Applied Materials',
+        'Lam Research', 'KLA Corporation', 'ARM Holdings'
+    ],
+    '가전/IT': [
+        'Apple', 'Google AI', 'Microsoft', 'Amazon AWS', 'Meta AI',
+        'OpenAI', 'Anthropic', 'Netflix', 'Adobe', 'Salesforce',
+        'Oracle cloud', 'IBM Watson'
+    ],
+    '방산': [
+        'Lockheed Martin', 'Raytheon', 'Northrop Grumman',
+        'Boeing defense', 'General Dynamics', 'BAE Systems',
+        'L3Harris', 'RTX missile'
+    ],
+    '조선': [
+        'COSCO shipping', 'Maersk', 'MSC shipping',
+        'CMA CGM', 'Evergreen Marine', 'Hapag-Lloyd',
+        'ONE shipping', 'Yang Ming'
+    ],
+    '한국기업': [
+        'Samsung Electronics', 'SK Hynix', 'Hyundai Motor', 'Kia Motors',
+        'LG Electronics', 'LG Energy Solution', 'Samsung SDI',
+        'Naver', 'Kakao', 'Coupang', 'Celltrion', 'Samsung Biologics',
+        'Hanwha Aerospace', 'Korea Shipbuilding'
+    ],
+    '에너지': [
+        'Vestas wind', 'Siemens Gamesa', 'First Solar', 'Enphase',
+        'NextEra Energy', 'ExxonMobil hydrogen', 'Shell renewable'
+    ],
+    '바이오': [
+        'Pfizer', 'Moderna', 'Eli Lilly', 'Novo Nordisk',
+        'Johnson & Johnson pharma', 'AbbVie', 'Merck drug'
+    ]
 };
 
 /**
@@ -97,6 +130,8 @@ export async function searchGlobalNews(query, industry) {
  */
 export async function collectGoogleNews(keywordsByIndustry) {
     const allNews = [];
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);  // 24시간 전
 
     for (const [industry, keywords] of Object.entries(keywordsByIndustry)) {
         console.log(`🌍 [Google RSS] ${industry} 산업 뉴스 수집 중...`);
@@ -105,13 +140,15 @@ export async function collectGoogleNews(keywordsByIndustry) {
         for (const keyword of keywords) {
             const news = await searchGoogleNews(keyword);
 
-            // 상위 20개까지 수집 (개수 증가)
+            // 상위 20개까지 수집 + 24시간 이내만
             for (const item of news.slice(0, 20)) {
-                allNews.push({
-                    ...item,
-                    industry,
-                    searchKeyword: keyword
-                });
+                if (item.pubDate && item.pubDate > yesterday) {
+                    allNews.push({
+                        ...item,
+                        industry,
+                        searchKeyword: keyword
+                    });
+                }
             }
 
             // 차단 방지를 위해 1초 대기 (안전 모드)
@@ -119,7 +156,7 @@ export async function collectGoogleNews(keywordsByIndustry) {
         }
     }
 
-    console.log(`✅ [Google RSS 국내] 총 ${allNews.length}개 수집`);
+    console.log(`✅ [Google RSS 국내] 총 ${allNews.length}개 수집 (24시간 이내)`);
     return allNews;
 }
 

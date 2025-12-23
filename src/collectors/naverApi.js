@@ -51,20 +51,26 @@ function cleanHtml(text) {
 
 export async function collectNaverNews(keywordsByIndustry) {
     const allNews = [];
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);  // 24시간 전
 
     for (const [industry, keywords] of Object.entries(keywordsByIndustry)) {
         console.log(`📰 [네이버 API] ${industry} 산업 뉴스 수집 중...`);
 
-        for (const keyword of keywords.slice(0, 3)) {
+        // 모든 키워드 검색 (slice 제거 - API 한도 25,000건 충분)
+        for (const keyword of keywords) {
             const news = await searchNaverNews(keyword, 15);
             for (const item of news) {
-                allNews.push({ ...item, industry, searchKeyword: keyword });
+                // 24시간 이내 뉴스만 수집
+                if (item.pubDate && item.pubDate > yesterday) {
+                    allNews.push({ ...item, industry, searchKeyword: keyword });
+                }
             }
             await sleep(100);
         }
     }
 
-    console.log(`✅ [네이버 API] 총 ${allNews.length}개 뉴스 수집 완료`);
+    console.log(`✅ [네이버 API] 총 ${allNews.length}개 뉴스 수집 완료 (24시간 이내)`);
     return allNews;
 }
 
