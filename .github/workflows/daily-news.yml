@@ -61,3 +61,26 @@ jobs:
             exit 1
           fi
 
+      - name: 🌐 Vercel 대시보드 자동 업데이트
+        run: |
+          echo "📦 news-dashboard 저장소로 데이터 동기화 중..."
+          
+          # news-dashboard 리포 클론
+          git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/ghdd98/news-dashboard.git ../dashboard-temp
+          
+          # 데이터 복사
+          cp -r data/* ../dashboard-temp/data/
+          
+          # 변경사항 커밋 및 푸시
+          cd ../dashboard-temp
+          git config user.name "News Bot"
+          git config user.email "bot@news-automation.com"
+          git add data/
+          
+          if ! git diff --staged --quiet; then
+            git commit -m "📰 Auto-sync: $(date +'%Y-%m-%d %H:%M')"
+            git push
+            echo "✅ Vercel 대시보드가 자동으로 업데이트됩니다!"
+          else
+            echo "⚠️ 동기화할 새 데이터가 없습니다."
+          fi
