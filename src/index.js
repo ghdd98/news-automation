@@ -72,8 +72,10 @@ async function main() {
         const outputDir = 'data';
         await fs.mkdir(outputDir, { recursive: true });
 
-        // 날짜별 백업 및 최신 파일 생성
-        const todayStr = new Date().toISOString().split('T')[0];
+        // 날짜별 백업 및 최신 파일 생성 (한국 시간 기준)
+        const now = new Date();
+        const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+        const todayStr = koreaTime.toISOString().split('T')[0];
         const resultData = {
             date: todayStr,
             updatedAt: new Date().toISOString(),
