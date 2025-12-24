@@ -42,6 +42,9 @@ jobs:
           git config --global user.name "News Bot"
           git config --global user.email "bot@news-automation.com"
           
+          # 최신 변경사항 동기화 (충돌 방지)
+          git pull --rebase origin main
+          
           if [ -d "data" ]; then
             git add data/
             
