@@ -42,14 +42,18 @@ jobs:
           git config --global user.name "News Bot"
           git config --global user.email "bot@news-automation.com"
           
-          # 최신 변경사항 동기화 (충돌 방지)
-          git pull --rebase origin main
-          
           if [ -d "data" ]; then
+            # 1. 변경된 파일들을 먼저 스테이징
             git add data/
             
             if ! git diff --staged --quiet; then
-              git commit -m "📰 News Update: $(date +'%Y-%m-%d %H:%M')"
+              # 2. 임시 커밋 생성 (rebase 전에 변경사항 보호)
+              git commit -m "📰 News Update: $(TZ='Asia/Seoul' date +'%Y-%m-%d %H:%M')"
+              
+              # 3. 원격 저장소 최신 변경사항과 동기화
+              git pull --rebase origin main
+              
+              # 4. 푸시
               git push
               echo "✅ 뉴스 데이터가 성공적으로 저장되었습니다."
             else
