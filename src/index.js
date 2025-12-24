@@ -14,10 +14,6 @@ import { filterByCompany } from './filters/companyFilter.js';
 import { preFilterNews } from './filters/preFilter.js';
 import { filterAndSummarizeWithAI } from './filters/aiFilter.js';
 
-// 저장
-import { saveToNotion } from './exporters/notion.js';
-import { saveToObsidian } from './exporters/obsidian.js';
-
 // 설정
 import INDUSTRY_KEYWORDS from './config/keywords.js';
 
