@@ -5,7 +5,8 @@ dotenv.config();
 // 수집기 (2개 소스: 네이버 API + Google RSS 국내)
 import { collectNaverNews } from './collectors/naverApi.js';
 import { collectGoogleNews } from './collectors/googleRss.js';
-// naverRss.js, collectGlobalNews 제거됨 - 국내 뉴스에서 해외 기업 키워드로 검색
+import { collectAllCategoryNews } from './collectors/categoryRss.js';
+// 카테고리 뉴스: 경제, 정치, 사회, 해외
 
 // 필터
 import { deduplicateNews } from './filters/deduplicator.js';
@@ -28,19 +29,20 @@ async function main() {
 
     try {
         // 1. 뉴스 수집 (2개 소스: 네이버 API, Google RSS 국내)
-        console.log('\n📡 [수집 단계]');
-        const [naverNews, googleNews] = await Promise.all([
+        console.log('\n📡 [산업별 뉴스 수집 단계]');
+        const [naverNews, googleNews, categoryNews] = await Promise.all([
             collectNaverNews(INDUSTRY_KEYWORDS),
-            collectGoogleNews(INDUSTRY_KEYWORDS)
+            collectGoogleNews(INDUSTRY_KEYWORDS),
+            collectAllCategoryNews()
         ]);
 
-        console.log('\n📊 수집 결과:');
+        console.log('\n📊 산업별 수집 결과:');
         console.log(`   🇰🇷 네이버 API: ${naverNews.length}개`);
         console.log(`   🇰🇷 Google RSS: ${googleNews.length}개`);
 
         const allNews = [...naverNews, ...googleNews];
         console.log(`   ─────────────────`);
-        console.log(`   총 수집: ${allNews.length}개`);
+        console.log(`   총 산업별 수집: ${allNews.length}개`);
 
         // 2. 중복 제거
         console.log('\n🔄 [중복 제거]');
@@ -78,12 +80,19 @@ async function main() {
             stats: {
                 total: allNews.length,
                 top: critical.length,
-                ref: reference.length
+                ref: reference.length,
+                categories: {
+                    economy: categoryNews.economy.length,
+                    politics: categoryNews.politics.length,
+                    society: categoryNews.society.length,
+                    global: categoryNews.global.length
+                }
             },
             news: {
                 top: critical,
                 reference: reference
-            }
+            },
+            categories: categoryNews
         };
 
         // 최신 파일 (웹앱이 읽을 것)
@@ -128,6 +137,11 @@ async function main() {
         console.log('✅ 뉴스 자동화 완료!');
         console.log(`   🔥 핵심 뉴스: ${critical.length}건`);
         console.log(`   📎 참고 뉴스: ${reference.length}건`);
+        console.log('   ─────────────────');
+        console.log(`   📊 경제: ${categoryNews.economy.length}건`);
+        console.log(`   🏛️ 정치: ${categoryNews.politics.length}건`);
+        console.log(`   👥 사회: ${categoryNews.society.length}건`);
+        console.log(`   🌐 해외: ${categoryNews.global.length}건`);
         console.log('========================================\n');
 
     } catch (error) {
