@@ -9,7 +9,7 @@ on:
 jobs:
   collect-news:
     runs-on: ubuntu-latest
-    timeout-minutes: 90  # 최대 90분
+    timeout-minutes: 180  # 최대 180분 (3시간)
 
     steps:
       - name: 📥 코드 체크아웃
