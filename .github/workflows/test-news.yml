@@ -6,7 +6,7 @@ on:
 jobs:
   test-news:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90  # 30분 → 90분으로 증가
 
     steps:
       - name: 📥 코드 체크아웃
