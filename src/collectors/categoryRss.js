@@ -32,15 +32,58 @@ const GLOBAL_FEED = {
     emoji: '🌐'
 };
 
-// 신뢰 언론사 (국내)
+// 신뢰 언론사 (국내) - 대폭 확장
 const TRUSTED_DOMESTIC = {
-    economy: ['한국경제', '한경', 'hankyung', '매일경제', '매경', 'mk.co.kr', '서울경제', 'sedaily'],
-    politics: ['조선일보', '조선', 'chosun', '중앙일보', '중앙', 'joongang', '동아일보', '동아', 'donga'],
-    society: ['KBS', 'MBC', 'SBS', 'JTBC', 'YTN']
+    economy: [
+        // 경제지
+        '한국경제', '한경', 'hankyung', '매일경제', '매경', 'mk.co.kr',
+        '서울경제', 'sedaily', '머니투데이', 'mt.co.kr', '이데일리', 'edaily',
+        '헤럴드경제', 'heraldcorp', '아시아경제', 'asiae', '파이낸셜뉴스', 'fnnews',
+        // 종합지
+        '연합뉴스', 'yonhap', '조선일보', 'chosun', '중앙일보', 'joongang',
+        '동아일보', 'donga', '한겨레', 'hani', '경향신문', 'khan',
+        // 방송
+        'KBS', 'MBC', 'SBS', 'JTBC', 'YTN', 'MBN', '채널A', 'TV조선'
+    ],
+    politics: [
+        // 종합지 (정치면 강함)
+        '조선일보', 'chosun', '중앙일보', 'joongang', '동아일보', 'donga',
+        '한겨레', 'hani', '경향신문', 'khan', '국민일보', 'kmib',
+        '문화일보', 'munhwa', '세계일보', 'segye',
+        // 통신사
+        '연합뉴스', 'yonhap', '뉴시스', 'newsis', '뉴스1', 'news1',
+        // 방송
+        'KBS', 'MBC', 'SBS', 'JTBC', 'YTN', 'MBN', '채널A', 'TV조선',
+        // 인터넷 언론
+        '오마이뉴스', 'ohmynews', '프레시안', 'pressian'
+    ],
+    society: [
+        // 방송 (사회면 강함)
+        'KBS', 'MBC', 'SBS', 'JTBC', 'YTN', 'MBN', '채널A', 'TV조선',
+        // 종합지
+        '연합뉴스', 'yonhap', '조선일보', 'chosun', '중앙일보', 'joongang',
+        '동아일보', 'donga', '한겨레', 'hani', '경향신문', 'khan',
+        // 통신사
+        '뉴시스', 'newsis', '뉴스1', 'news1',
+        // 인터넷 언론
+        '노컷뉴스', 'nocutnews', '시사저널', 'sisajournal'
+    ]
 };
 
-// 신뢰 언론사 (해외)
-const TRUSTED_GLOBAL = ['Reuters', 'Bloomberg', 'AP News', 'Associated Press', 'AP', 'BBC', 'CNN'];
+// 신뢰 언론사 (해외) - 대폭 확장
+const TRUSTED_GLOBAL = [
+    // 통신사
+    'Reuters', 'AP News', 'Associated Press', 'AP', 'AFP',
+    // 미국
+    'Bloomberg', 'CNBC', 'CNN', 'Fox News', 'NBC', 'ABC News', 'CBS News',
+    'The New York Times', 'NYT', 'Washington Post', 'Wall Street Journal', 'WSJ',
+    'USA Today', 'NPR', 'Politico',
+    // 영국
+    'BBC', 'The Guardian', 'Financial Times', 'FT', 'The Times', 'The Telegraph',
+    'Sky News', 'Daily Mail',
+    // 기타
+    'Al Jazeera', 'DW', 'France 24', 'NHK', 'South China Morning Post', 'SCMP'
+];
 
 // 광고성 키워드 패턴
 const AD_PATTERNS = [
