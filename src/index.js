@@ -70,13 +70,10 @@ async function main() {
         const outputDir = 'data';
         await fs.mkdir(outputDir, { recursive: true });
 
-        // 테스트 모드 체크
-        const isTestMode = process.env.TEST_MODE === 'true';
-
         // 날짜별 백업 및 최신 파일 생성 (한국 시간 기준)
         const now = new Date();
         const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
-        const todayStr = isTestMode ? 'test' : koreaTime.toISOString().split('T')[0];
+        const todayStr = koreaTime.toISOString().split('T')[0];
         const resultData = {
             date: todayStr,
             updatedAt: new Date().toISOString(),
@@ -98,18 +95,12 @@ async function main() {
             categories: categoryNews
         };
 
-        if (isTestMode) {
-            // 테스트 모드: news_test.json만 저장 (기존 데이터 보존)
-            await fs.writeFile(`${outputDir}/news_test.json`, JSON.stringify(resultData, null, 2), 'utf-8');
-            console.log(`🧪 테스트 데이터 저장 완료: data/news_test.json`);
-            console.log(`   → 대시보드에서 ?date=test 로 접근하세요`);
-        } else {
-            // 일반 모드: 기존 동작
-            await fs.writeFile(`${outputDir}/latest_news.json`, JSON.stringify(resultData, null, 2), 'utf-8');
-            // 백업 파일 (히스토리용)
-            await fs.writeFile(`${outputDir}/news_${todayStr}.json`, JSON.stringify(resultData, null, 2), 'utf-8');
-            console.log(`✅ JSON 데이터 저장 완료: data/latest_news.json`);
-        }
+        // 최신 파일 (웹앱이 읽을 것)
+        await fs.writeFile(`${outputDir}/latest_news.json`, JSON.stringify(resultData, null, 2), 'utf-8');
+        // 백업 파일 (히스토리용)
+        await fs.writeFile(`${outputDir}/news_${todayStr}.json`, JSON.stringify(resultData, null, 2), 'utf-8');
+        console.log(`✅ JSON 데이터 저장 완료: data/latest_news.json`);
+
 
         // 6-2. 데이터 청소 (15일 이상 된 파일 삭제)
         try {
