@@ -6,7 +6,7 @@ on:
 jobs:
   test-news:
     runs-on: ubuntu-latest
-    timeout-minutes: 90  # 30분 → 90분으로 증가
+    timeout-minutes: 90
 
     steps:
       - name: 📥 코드 체크아웃
@@ -46,4 +46,33 @@ jobs:
             git push origin main
           else
             echo "No test data generated"
+          fi
+
+      - name: 🌐 Vercel 대시보드로 테스트 데이터 동기화
+        run: |
+          echo "📦 news-dashboard 저장소로 테스트 데이터 동기화 중..."
+          
+          if [ -f "data/news_test.json" ]; then
+            # news-dashboard 리포 클론
+            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/ghdd98/news-dashboard.git ../dashboard-temp
+            
+            # 테스트 데이터 복사
+            cp data/news_test.json ../dashboard-temp/data/
+            
+            # 변경사항 커밋 및 푸시
+            cd ../dashboard-temp
+            git config user.name "News Bot"
+            git config user.email "ghdd98@users.noreply.github.com"
+            git add data/news_test.json
+            
+            if ! git diff --staged --quiet; then
+              git commit -m "🧪 Test sync: Category news data"
+              git push
+              echo "✅ 테스트 데이터가 대시보드에 동기화되었습니다!"
+              echo "   → https://news-dashboard-xi.vercel.app/?date=test 에서 확인하세요"
+            else
+              echo "⚠️ 동기화할 새 데이터가 없습니다."
+            fi
+          else
+            echo "❌ 테스트 데이터가 없습니다."
           fi
