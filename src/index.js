@@ -10,8 +10,6 @@ import { collectAllCategoryNews } from './collectors/categoryRss.js';
 
 // 필터
 import { deduplicateNews } from './filters/deduplicator.js';
-import { filterByKeywords } from './filters/keywordFilter.js';
-import { filterByCompany } from './filters/companyFilter.js';
 import { preFilterNews } from './filters/preFilter.js';
 import { filterAndSummarizeWithAI } from './filters/aiFilter.js';
 
@@ -48,18 +46,11 @@ async function main() {
         console.log('\n🔄 [중복 제거]');
         const uniqueNews = deduplicateNews(allNews);
 
-        // 3. 1단계: 키워드 필터링
-        console.log('\n🔍 [필터링 단계]');
-        const keywordFiltered = filterByKeywords(uniqueNews);
-
-        // 4. 2단계: 기업명 필터링
-        const companyFiltered = filterByCompany(keywordFiltered);
-
-        // 5. 3단계: 사전 필터링 (광고성/무관 기사 제거)
+        // 3. 사전 필터링 (광고성/무관 기사 제거, 주요 언론사 필터)
         console.log('\n🎯 [사전 필터링]');
-        const preFiltered = preFilterNews(companyFiltered);
+        const preFiltered = preFilterNews(uniqueNews);
 
-        // 6. 4단계: AI 분석 (본문 분석)
+        // 4. AI 분석 (중요도 점수)
         console.log('\n🤖 [AI 분석 단계]');
         const { critical, reference } = await filterAndSummarizeWithAI(preFiltered);
 
