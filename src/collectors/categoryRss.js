@@ -202,7 +202,7 @@ export async function collectCategoryNews(category, maxCount = 20) {
 /**
  * 해외 뉴스 수집
  */
-export async function collectGlobalCategoryNews(maxCount = 30) {
+export async function collectGlobalCategoryNews(maxCount = 20) {
     console.log(`📰 [카테고리] ${GLOBAL_FEED.emoji} ${GLOBAL_FEED.name} 뉴스 수집 중...`);
 
     try {
@@ -281,7 +281,7 @@ export async function collectAllCategoryNews() {
         collectCategoryNews('economy', 20),
         collectCategoryNews('politics', 20),
         collectCategoryNews('society', 20),
-        collectGlobalCategoryNews(30)
+        collectGlobalCategoryNews(20)
     ]);
 
     console.log('\n📊 카테고리 뉴스 수집 결과:');
