@@ -138,7 +138,7 @@ export async function collectCategoryNews(category, maxCount = 20) {
         const news = [];
         const now = new Date();
         const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);  // 24시간 전
-        const maxFetch = 50;  // 더 많이 가져온 후 필터링
+        const maxFetch = 60;  // 더 많이 가져온 후 필터링
         let fetched = 0;
 
         for (const item of rss.items) {
