@@ -243,7 +243,13 @@ export const INDUSTRY_KEYWORDS = {
         '두산로보틱스', '두산로봇', '두로봇', 'DRX',
         '뉴로메카', '레인보우로보틱스', '레로보', '레인보우',
         '한화로보틱스', '한화로봇', 'LS로봇', '로보티즈',
-        // 🌐 해외 대형 기업
+        // � 공작기계 (Machine Tools)
+        '공작기계', 'CNC', 'CNC선반', 'CNC밀링', '머시닝센터', '선반', '밀링',
+        'DN솔루션즈', 'DN Solutions', '두산공작기계', '두산머시닝',
+        '현대위아', '위아', 'Hyundai Wia', '스맥', 'SMEC',
+        '화천기공', '화천', 'Hwacheon', '한화정밀기계', '한화머신',
+        'DMG MORI', '마자크', 'Mazak', '오쿠마', 'Okuma', '화낙', 'FANUC',
+        // �🌐 해외 대형 기업
         '보스턴다이나믹스', 'Boston Dynamics', 'BD', 'Figure', '피규어', 'Figure AI',
         '테슬라봇', 'Tesla Bot', 'Optimus', '옵티머스',
         '화낙', 'FANUC', 'ABB', 'KUKA', '쿠카', '야스카와', 'Yaskawa',
