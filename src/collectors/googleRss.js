@@ -58,8 +58,8 @@ export async function collectGoogleNews(keywordsByIndustry) {
         for (const keyword of keywords) {
             const news = await searchGoogleNews(keyword);
 
-            // 상위 20개까지 수집 + 24시간 이내만
-            for (const item of news.slice(0, 20)) {
+            // 상위 40개까지 수집 + 24시간 이내만
+            for (const item of news.slice(0, 40)) {
                 if (item.pubDate && item.pubDate > yesterday) {
                     allNews.push({
                         ...item,

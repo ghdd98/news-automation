@@ -8,10 +8,10 @@ const NAVER_API_URL = 'https://openapi.naver.com/v1/search/news.json';
 /**
  * 네이버 뉴스 API로 뉴스 검색
  */
-export async function searchNaverNews(query, display = 20) {
+export async function searchNaverNews(query, display = 20, sort = 'date') {
     try {
         const response = await axios.get(NAVER_API_URL, {
-            params: { query, display, sort: 'date' },
+            params: { query, display, sort },
             headers: {
                 'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID,
                 'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET
@@ -57,9 +57,16 @@ export async function collectNaverNews(keywordsByIndustry) {
     for (const [industry, keywords] of Object.entries(keywordsByIndustry)) {
         console.log(`📰 [네이버 API] ${industry} 산업 뉴스 수집 중...`);
 
-        // 모든 키워드 검색 (slice 제거 - API 한도 25,000건 충분)
+        // 모든 키워드 검색
         for (const keyword of keywords) {
-            const news = await searchNaverNews(keyword, 15);
+            // 1. 최신순(date) 20개
+            const newsDate = await searchNaverNews(keyword, 20, 'date');
+
+            // 2. 정확도순(sim) 20개
+            const newsSim = await searchNaverNews(keyword, 20, 'sim');
+
+            // 합치기 (중복은 나중에 전체 deduplicator에서 걸러짐)
+            const news = [...newsDate, ...newsSim];
             for (const item of news) {
                 // 24시간 이내 뉴스만 수집
                 if (item.pubDate && item.pubDate > yesterday) {
