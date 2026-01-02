@@ -92,7 +92,8 @@ const MAJOR_SOURCES = [
     'hani.co.kr', '한겨레',
     'khan.co.kr', '경향신문',
     'news1.kr', '뉴스1',
-    'newsis.com', '뉴시스'
+    'newsis.com', '뉴시스',
+    'munhwa.com', '문화일보'
 ];
 
 // ==================== 해외 주요 언론사 (글로벌) ====================
