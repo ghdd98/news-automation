@@ -136,8 +136,15 @@ export async function collectCategoryNews(category, maxCount = 20) {
     try {
         const rss = await parser.parseURL(feed.url);
         const news = [];
+        const now = new Date();
+        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);  // 24시간 전
+        const maxFetch = 50;  // 더 많이 가져온 후 필터링
+        let fetched = 0;
 
         for (const item of rss.items) {
+            if (fetched >= maxFetch) break;
+            fetched++;
+
             // 제목에서 언론사 분리
             const lastHyphenIndex = item.title?.lastIndexOf(' - ');
             let title = item.title;
@@ -149,6 +156,12 @@ export async function collectCategoryNews(category, maxCount = 20) {
             }
 
             const description = item.contentSnippet || item.content || '';
+            const pubDate = new Date(item.pubDate);
+
+            // 24시간 이내 필터
+            if (pubDate < yesterday) {
+                continue;
+            }
 
             // 광고 필터
             if (isAdvertisement(title, description)) {
@@ -164,7 +177,7 @@ export async function collectCategoryNews(category, maxCount = 20) {
                 title: title,
                 description: description,
                 link: item.link,
-                pubDate: new Date(item.pubDate),
+                pubDate: pubDate,
                 source: `category-${category}`,
                 publisher: publisher,
                 category: category,
@@ -173,10 +186,11 @@ export async function collectCategoryNews(category, maxCount = 20) {
                 isGlobal: false
             });
 
+            // 최종 maxCount개만 선별 (Google 순위 유지)
             if (news.length >= maxCount) break;
         }
 
-        console.log(`   ✅ ${feed.name}: ${news.length}개 (신뢰 언론사 기준)`);
+        console.log(`   ✅ ${feed.name}: ${news.length}개 (24시간 이내 + 신뢰 언론사)`);
         return news;
 
     } catch (error) {
@@ -194,8 +208,15 @@ export async function collectGlobalCategoryNews(maxCount = 30) {
     try {
         const rss = await parser.parseURL(GLOBAL_FEED.url);
         const news = [];
+        const now = new Date();
+        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);  // 24시간 전
+        const maxFetch = 60;  // 더 많이 가져온 후 필터링
+        let fetched = 0;
 
         for (const item of rss.items) {
+            if (fetched >= maxFetch) break;
+            fetched++;
+
             // 제목에서 언론사 분리
             const lastHyphenIndex = item.title?.lastIndexOf(' - ');
             let title = item.title;
@@ -207,6 +228,12 @@ export async function collectGlobalCategoryNews(maxCount = 30) {
             }
 
             const description = item.contentSnippet || item.content || '';
+            const pubDate = new Date(item.pubDate);
+
+            // 24시간 이내 필터
+            if (pubDate < yesterday) {
+                continue;
+            }
 
             // 광고 필터
             if (isAdvertisement(title, description)) {
@@ -222,7 +249,7 @@ export async function collectGlobalCategoryNews(maxCount = 30) {
                 title: title,
                 description: description,
                 link: item.link,
-                pubDate: new Date(item.pubDate),
+                pubDate: pubDate,
                 source: 'category-global',
                 publisher: publisher,
                 category: 'global',
@@ -231,10 +258,11 @@ export async function collectGlobalCategoryNews(maxCount = 30) {
                 isGlobal: true
             });
 
+            // 최종 maxCount개만 선별 (Google 순위 유지)
             if (news.length >= maxCount) break;
         }
 
-        console.log(`   ✅ 해외: ${news.length}개 (신뢰 언론사 기준)`);
+        console.log(`   ✅ 해외: ${news.length}개 (24시간 이내 + 신뢰 언론사)`);
         return news;
 
     } catch (error) {
