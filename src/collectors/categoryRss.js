@@ -25,11 +25,18 @@ const DOMESTIC_FEEDS = {
     }
 };
 
-// 해외 뉴스 RSS (영어)
-const GLOBAL_FEED = {
-    url: 'https://news.google.com/rss?hl=en&gl=US&ceid=US:en',
-    name: '해외',
-    emoji: '🌐'
+// 해외 뉴스 RSS (영어) - 경제/정치 분리
+const GLOBAL_FEEDS = {
+    business: {
+        url: 'https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx6TVdZU0FtVnVHZ0pWVXlnQVAB?hl=en&gl=US&ceid=US:en',
+        name: '해외경제',
+        emoji: '💹'
+    },
+    world: {
+        url: 'https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRFZxYUdjU0FtVnVHZ0pWVXlnQVAB?hl=en&gl=US&ceid=US:en',
+        name: '해외정치',
+        emoji: '�'
+    }
 };
 
 // 신뢰 언론사 (국내) - 대폭 확장
@@ -200,75 +207,81 @@ export async function collectCategoryNews(category, maxCount = 20) {
 }
 
 /**
- * 해외 뉴스 수집
+ * 해외 뉴스 수집 (경제 + 정치 분리)
  */
-export async function collectGlobalCategoryNews(maxCount = 20) {
-    console.log(`📰 [카테고리] ${GLOBAL_FEED.emoji} ${GLOBAL_FEED.name} 뉴스 수집 중...`);
+export async function collectGlobalCategoryNews(maxPerCategory = 10) {
+    const allNews = [];
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);  // 24시간 전
+    const maxFetch = 60;  // 더 많이 가져온 후 필터링
 
-    try {
-        const rss = await parser.parseURL(GLOBAL_FEED.url);
-        const news = [];
-        const now = new Date();
-        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);  // 24시간 전
-        const maxFetch = 60;  // 더 많이 가져온 후 필터링
-        let fetched = 0;
+    for (const [key, feed] of Object.entries(GLOBAL_FEEDS)) {
+        console.log(`📰 [카테고리] ${feed.emoji} ${feed.name} 뉴스 수집 중...`);
 
-        for (const item of rss.items) {
-            if (fetched >= maxFetch) break;
-            fetched++;
+        try {
+            const rss = await parser.parseURL(feed.url);
+            const news = [];
+            let fetched = 0;
 
-            // 제목에서 언론사 분리
-            const lastHyphenIndex = item.title?.lastIndexOf(' - ');
-            let title = item.title;
-            let publisher = '';
+            for (const item of rss.items) {
+                if (fetched >= maxFetch) break;
+                fetched++;
 
-            if (lastHyphenIndex > 0) {
-                title = item.title.substring(0, lastHyphenIndex);
-                publisher = item.title.substring(lastHyphenIndex + 3);
+                // 제목에서 언론사 분리
+                const lastHyphenIndex = item.title?.lastIndexOf(' - ');
+                let title = item.title;
+                let publisher = '';
+
+                if (lastHyphenIndex > 0) {
+                    title = item.title.substring(0, lastHyphenIndex);
+                    publisher = item.title.substring(lastHyphenIndex + 3);
+                }
+
+                const description = item.contentSnippet || item.content || '';
+                const pubDate = new Date(item.pubDate);
+
+                // 24시간 이내 필터
+                if (pubDate < yesterday) {
+                    continue;
+                }
+
+                // 광고 필터
+                if (isAdvertisement(title, description)) {
+                    continue;
+                }
+
+                // 신뢰 언론사 필터
+                if (!isTrustedSource(publisher, item.link, null, true)) {
+                    continue;
+                }
+
+                news.push({
+                    title: title,
+                    description: description,
+                    link: item.link,
+                    pubDate: pubDate,
+                    source: `category-global-${key}`,
+                    publisher: publisher,
+                    category: 'global',
+                    categoryName: feed.name,
+                    categoryEmoji: feed.emoji,
+                    isGlobal: true,
+                    globalType: key  // 'business' or 'world'
+                });
+
+                // 카테고리별 maxPerCategory개만 선별
+                if (news.length >= maxPerCategory) break;
             }
 
-            const description = item.contentSnippet || item.content || '';
-            const pubDate = new Date(item.pubDate);
+            console.log(`   ✅ ${feed.name}: ${news.length}개 (24시간 이내 + 신뢰 언론사)`);
+            allNews.push(...news);
 
-            // 24시간 이내 필터
-            if (pubDate < yesterday) {
-                continue;
-            }
-
-            // 광고 필터
-            if (isAdvertisement(title, description)) {
-                continue;
-            }
-
-            // 신뢰 언론사 필터
-            if (!isTrustedSource(publisher, item.link, null, true)) {
-                continue;
-            }
-
-            news.push({
-                title: title,
-                description: description,
-                link: item.link,
-                pubDate: pubDate,
-                source: 'category-global',
-                publisher: publisher,
-                category: 'global',
-                categoryName: '해외',
-                categoryEmoji: '🌐',
-                isGlobal: true
-            });
-
-            // 최종 maxCount개만 선별 (Google 순위 유지)
-            if (news.length >= maxCount) break;
+        } catch (error) {
+            console.error(`   ❌ ${feed.name} 수집 오류:`, error.message);
         }
-
-        console.log(`   ✅ 해외: ${news.length}개 (24시간 이내 + 신뢰 언론사)`);
-        return news;
-
-    } catch (error) {
-        console.error(`   ❌ 해외 뉴스 수집 오류:`, error.message);
-        return [];
     }
+
+    return allNews;
 }
 
 /**
@@ -281,14 +294,14 @@ export async function collectAllCategoryNews() {
         collectCategoryNews('economy', 20),
         collectCategoryNews('politics', 20),
         collectCategoryNews('society', 20),
-        collectGlobalCategoryNews(20)
+        collectGlobalCategoryNews(10)  // 해외경제 10개 + 해외정치 10개 = 총 20개
     ]);
 
     console.log('\n📊 카테고리 뉴스 수집 결과:');
     console.log(`   📊 경제: ${economy.length}개`);
     console.log(`   🏛️ 정치: ${politics.length}개`);
     console.log(`   👥 사회: ${society.length}개`);
-    console.log(`   🌐 해외: ${global.length}개`);
+    console.log(`   🌐 해외: ${global.length}개 (경제+정치)`);
 
     return {
         economy,
