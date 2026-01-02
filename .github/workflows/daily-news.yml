@@ -2,14 +2,14 @@ name: 📰 Daily News Automation
 
 on:
   schedule:
-    # 매일 오전 6시 (한국시간 = UTC 21:00 전날)
-    - cron: '0 21 * * *'
+    # 매일 오전 5시 (한국시간 = UTC 20:00 전날)
+    - cron: '0 20 * * *'
   workflow_dispatch:  # 수동 실행도 가능
 
 jobs:
   collect-news:
     runs-on: ubuntu-latest
-    timeout-minutes: 180  # 최대 180분 (3시간)
+    timeout-minutes: 240  # 최대 240분 (4시간)
 
     steps:
       - name: 📥 코드 체크아웃
