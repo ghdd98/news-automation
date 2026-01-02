@@ -75,15 +75,16 @@ const MAJOR_SOURCES = [
     'hankyung.com', '한국경제', '한경',
     'mk.co.kr', '매일경제', '매경',
     'sedaily.com', '서울경제',
-    'yonhapnews', 'yna.co.kr', '연합뉴스',
+    'yonhapnews', 'yna.co.kr', '연합뉴스', '연합인포맥스',
 
     // 2순위 - IT/산업 전문
     'etnews.com', '전자신문',
-    'thelec.kr', '더일렉',
-    'theelec.kr',
+    'thelec.kr', '더일렉', '디일렉', 'theelec.kr',
+    'zdnet', '지디넷코리아', 'ZDNet Korea',
     'mt.co.kr', '머니투데이',
     'asiae.co.kr', '아시아경제',
-    'biz.chosun.com', '조선비즈',
+    'biz.chosun.com', '조선비즈', 'Chosunbiz',
+    'heraldcorp', '헤럴드경제', '헤럴드',
 
     // 3순위 - 주요 일간지 및 통신사
     'chosun.com', '조선일보',
