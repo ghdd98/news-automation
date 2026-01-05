@@ -1,195 +1,198 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+/**
+ * 3단계 AI 파이프라인 필터
+ * - Stage 1: 노이즈 필터링 (1-3점 제거)
+ * - Stage 2: 경계 분석 (4점 제거, 5+ 통과)
+ * - Stage 3: 최종 분류 (핵심 vs 참고)
+ */
+
+import { stage1Analysis, stage2Analysis, stage3Analysis } from '../utils/groqClient.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// 모델 폴백 설정 (27b → 12b → 4b → 1b 순서로 시도)
-const MODELS = [
-  { name: 'gemma-3-27b-it', instance: null }, // 메인 (고성능)
-  { name: 'gemma-3-12b-it', instance: null }, // 1차 백업
-  { name: 'gemma-3-4b-it', instance: null },  // 2차 백업 (경량)
-  { name: 'gemma-3-1b-it', instance: null }   // 3차 백업 (초경량)
-];
-
-let currentModelIndex = 0; // 현재 사용 중인 모델 인덱스
-
-// 모델 인스턴스 초기화
-MODELS.forEach(m => {
-  m.instance = genAI.getGenerativeModel({ model: m.name });
-});
-
-/**
- * 2단계: AI 분석 (개별 뉴스)
- */
-async function analyzeWithAI(newsItem, content) {
-  const prompt = `당신은 취업준비생을 위한 기업 분석가입니다.
-아래 뉴스의 중요도를 평가하세요.
-
-[제목] ${newsItem.title}
-[본문] ${content}
-
-## 점수 기준
-
-**9-10점**: 기업 가치에 직접적 영향
-- 대규모 수주 (수천억~조원)
-- 분기/연간 실적 발표
-- M&A, 합병, 분할
-- CEO 교체, 대규모 구조조정
-
-**7-8점**: 사업 방향에 중요한 영향
-- 신사업 진출 발표
-- 공장/설비 증설 계획
-- 핵심 기술/특허 발표
-- 주요 임원 인사
-- 핵심 파트너십/계약 체결
-
-**5-6점**: 알아두면 유용한 정보
-- 신제품/서비스 출시
-- 대규모 투자 유치 (1000억원 이상)
-- 산업 동향/전망 분석 (시장 성장률, 수요 변화 등)
-- 정부 정책 변화 (보조금, 규제 등)
-- 업계 경쟁 구도 분석
-- 채용 계획/공고
-- 글로벌 시장 트렌드
-
-**4점**: 참고 수준 (저장됨)
-- 일반 기업 소식 (단순 홍보)
-- 일반 투자 유치 (1000억원 미만)
-- 컨퍼런스/행사 참가 소식
-- 인터뷰/인물 기사
-
-**1-3점**: 제외 (저장 안 됨)
-- 연예/스포츠/정치 뉴스
-- 광고성 콘텐츠
-- 단순 이벤트/행사/경품
-- 추적 대상 산업과 완전히 무관
-
-JSON 형식으로만 답변:
-{"score": 숫자, "keywords": ["키워드1", "키워드2", "키워드3"]}`;
-
-  // 현재 모델부터 시도
-  for (let modelIdx = currentModelIndex; modelIdx < MODELS.length; modelIdx++) {
-    const currentModel = MODELS[modelIdx];
-
-    for (let retry = 0; retry < 3; retry++) {
-      try {
-        const result = await currentModel.instance.generateContent(prompt);
-        const text = result.response.text();
-
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          return {
-            score: Math.min(10, Math.max(1, parsed.score || 4)),
-            keywords: Array.isArray(parsed.keywords) ? parsed.keywords.slice(0, 5) : []
-          };
-        }
-
-        return { score: 4, keywords: [] };
-      } catch (error) {
-        const errorMsg = error.message || '';
-
-        // Rate limit 에러 시 모델 전환
-        if (errorMsg.includes('429') || errorMsg.includes('quota') || errorMsg.includes('rate')) {
-          if (modelIdx < MODELS.length - 1) {
-            console.log(`   ⚠️ ${currentModel.name} 한도 초과, ${MODELS[modelIdx + 1].name}로 전환...`);
-            currentModelIndex = modelIdx + 1;
-            break; // 다음 모델로 전환
-          } else {
-            // 모든 모델 한도 초과 - 대기 후 재시도
-            console.log(`   ⏳ 모든 모델 한도 초과, ${(retry + 1) * 30}초 대기...`);
-            await sleep((retry + 1) * 30000);
-          }
-        } else if (retry < 2) {
-          await sleep(2000);
-        } else {
-          console.error('AI 분석 오류:', errorMsg);
-          return { score: 4, keywords: [] };
-        }
-      }
-    }
-  }
-
-  return { score: 4, keywords: [] };
-}
-
-/**
- * 3단계: AI 기반 필터링 (모델 폴백 지원)
- */
-export async function filterAndSummarizeWithAI(newsItems) {
-  const critical = [];
-  const reference = [];
-  let excluded = 0;
-
-  console.log(`🤖 [3단계 AI] ${newsItems.length}개 뉴스 분석 시작...`);
-  console.log(`   📍 사용 모델: ${MODELS[currentModelIndex].name}`);
-
-  let processed = 0;
-  for (const item of newsItems) {
-    try {
-      // 1. Description 확인
-      // 본문 크롤링은 수행하지 않음 (사용자 요청: 속도/토큰 절약 + 누락 시 표시)
-      let articleContent = null;
-      const delay = 2000; // 2초 대기 (빠른 처리)
-
-      const desc = item.description ? item.description.trim() : '';
-      if (desc.length < 10) {
-        // 설명이 없으면 AI에게 알릴 대체 텍스트 사용
-        articleContent = "본문 요약 내용이 없습니다. 제목을 바탕으로 유추하세요.";
-      } else {
-        articleContent = desc;
-      }
-
-      const analysis = await analyzeWithAI(item, articleContent);
-
-      // 설명이 없었던 경우, 키워드에 표시 추가
-      if (desc.length < 10) {
-        analysis.keywords.push("내용확인필요⚠️");
-      }
-
-      const enrichedItem = {
-        ...item,
-        score: analysis.score,
-        keywords: analysis.keywords
-      };
-
-      if (analysis.score >= 7) {
-        critical.push(enrichedItem);
-      } else if (analysis.score >= 5) {  // 변경: 4점 → 5점 이상만 Reference
-        reference.push(enrichedItem);
-      } else {
-        excluded++;  // 1-4점은 제외
-      }
-
-      processed++;
-      if (processed % 10 === 0) {
-        console.log(`   처리 중... ${processed}/${newsItems.length} (핵심: ${critical.length}, 참고: ${reference.length}, 제외: ${excluded}) [${MODELS[currentModelIndex].name}]`);
-      }
-
-      await sleep(delay);
-    } catch (error) {
-      console.error(`분석 실패: ${item.title}`, error.message);
-      reference.push({ ...item, score: 4, keywords: [] });
-    }
-  }
-
-  // 캐시 정리 (removed)
-
-  console.log(`✅ [3단계 AI] 완료`);
-  console.log(`   🔥 핵심: ${critical.length}개`);
-  console.log(`   📎 참고: ${reference.length}개`);
-  console.log(`   🗑️ 제외: ${excluded}개`);
-
-  return {
-    critical: critical.sort((a, b) => b.score - a.score),
-    reference: reference.sort((a, b) => b.score - a.score)
-  };
-}
+// ==================== 헬퍼 함수 ====================
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ==================== 3단계 파이프라인 ====================
+
+/**
+ * Stage 1: 노이즈 필터링
+ * 1-3점 뉴스 제거 (스포츠, 연예, 광고 등)
+ */
+async function runStage1(newsItems) {
+  console.log(`\n🔰 [Stage 1] 노이즈 필터링 시작 (${newsItems.length}개)`);
+  console.log(`   📍 모델: llama-3.1-8b-instant (백업: allam-2-7b)`);
+
+  const passed = [];
+  const excluded = [];
+  let processed = 0;
+
+  for (const item of newsItems) {
+    try {
+      const result = await stage1Analysis(item);
+
+      if (result.pass) {
+        passed.push({ ...item, stage1Score: result.score });
+      } else {
+        excluded.push(item);
+      }
+
+      processed++;
+      if (processed % 50 === 0) {
+        console.log(`   처리 중... ${processed}/${newsItems.length} (통과: ${passed.length}, 제외: ${excluded.length})`);
+      }
+
+      // Rate limit 준수 (분당 30개 = 2초 간격)
+      await sleep(2000);
+
+    } catch (error) {
+      console.error(`   Stage1 에러: ${item.title.slice(0, 30)}...`);
+      // 에러 시 안전하게 통과
+      passed.push({ ...item, stage1Score: 4 });
+    }
+  }
+
+  console.log(`   ✅ Stage 1 완료: ${newsItems.length}개 → ${passed.length}개 통과 (${excluded.length}개 제외)`);
+
+  return { passed, excluded };
+}
+
+/**
+ * Stage 2: 경계 분석
+ * 4점 제거, 5점 이상만 통과
+ */
+async function runStage2(newsItems) {
+  console.log(`\n🎯 [Stage 2] 경계 분석 시작 (${newsItems.length}개)`);
+  console.log(`   📍 모델: qwen/qwen3-32b (백업: llama-4-scout, kimi-k2)`);
+
+  const passed = [];
+  const excluded = [];
+  let processed = 0;
+
+  for (const item of newsItems) {
+    try {
+      const result = await stage2Analysis(item);
+
+      if (result.pass) {
+        passed.push({ ...item, stage2Score: result.score });
+      } else {
+        excluded.push(item);
+      }
+
+      processed++;
+      if (processed % 30 === 0) {
+        console.log(`   처리 중... ${processed}/${newsItems.length} (통과: ${passed.length}, 제외: ${excluded.length})`);
+      }
+
+      // Rate limit 준수 (분당 60개 = 1초 간격)
+      await sleep(1000);
+
+    } catch (error) {
+      console.error(`   Stage2 에러: ${item.title.slice(0, 30)}...`);
+      // 에러 시 안전하게 통과
+      passed.push({ ...item, stage2Score: 5 });
+    }
+  }
+
+  console.log(`   ✅ Stage 2 완료: ${newsItems.length}개 → ${passed.length}개 통과 (${excluded.length}개 제외)`);
+
+  return { passed, excluded };
+}
+
+/**
+ * Stage 3: 최종 분류
+ * 7점 이상 = 핵심, 5-6점 = 참고
+ */
+async function runStage3(newsItems) {
+  console.log(`\n⭐ [Stage 3] 최종 분류 시작 (${newsItems.length}개)`);
+  console.log(`   📍 모델: gpt-oss-120b (백업: 20b, safeguard-20b, llama-4-scout)`);
+
+  const critical = [];
+  const reference = [];
+  let processed = 0;
+
+  for (const item of newsItems) {
+    try {
+      const result = await stage3Analysis(item);
+
+      const enrichedItem = {
+        ...item,
+        score: result.score,
+        keywords: result.keywords
+      };
+
+      // 설명이 없는 경우 표시
+      if (!item.description || item.description.trim().length < 10) {
+        enrichedItem.keywords = [...(enrichedItem.keywords || []), '내용확인필요⚠️'];
+      }
+
+      if (result.category === 'critical') {
+        critical.push(enrichedItem);
+      } else {
+        reference.push(enrichedItem);
+      }
+
+      processed++;
+      if (processed % 20 === 0) {
+        console.log(`   처리 중... ${processed}/${newsItems.length} (핵심: ${critical.length}, 참고: ${reference.length})`);
+      }
+
+      // Rate limit 준수 (분당 30개 = 2초 간격)
+      await sleep(2000);
+
+    } catch (error) {
+      console.error(`   Stage3 에러: ${item.title.slice(0, 30)}...`);
+      // 에러 시 참고로 분류
+      reference.push({ ...item, score: 5, keywords: [] });
+    }
+  }
+
+  console.log(`   ✅ Stage 3 완료: 핵심 ${critical.length}개, 참고 ${reference.length}개`);
+
+  return { critical, reference };
+}
+
+// ==================== 메인 함수 ====================
+
+/**
+ * 3단계 AI 파이프라인 실행
+ */
+export async function filterAndSummarizeWithAI(newsItems) {
+  console.log('\n========================================');
+  console.log('🤖 3단계 AI 파이프라인 시작');
+  console.log(`   📊 입력: ${newsItems.length}개 뉴스`);
+  console.log('========================================');
+
+  const startTime = Date.now();
+
+  // Stage 1: 노이즈 필터링 (1-3점 제거)
+  const stage1Result = await runStage1(newsItems);
+
+  // Stage 2: 경계 분석 (4점 제거)
+  const stage2Result = await runStage2(stage1Result.passed);
+
+  // Stage 3: 최종 분류 (핵심 vs 참고)
+  const stage3Result = await runStage3(stage2Result.passed);
+
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+
+  console.log('\n========================================');
+  console.log('✅ 3단계 AI 파이프라인 완료');
+  console.log(`   ⏱️ 소요 시간: ${elapsed}초`);
+  console.log(`   📊 입력: ${newsItems.length}개`);
+  console.log(`   🔰 Stage 1 통과: ${stage1Result.passed.length}개`);
+  console.log(`   🎯 Stage 2 통과: ${stage2Result.passed.length}개`);
+  console.log(`   🔥 핵심: ${stage3Result.critical.length}개`);
+  console.log(`   📎 참고: ${stage3Result.reference.length}개`);
+  console.log('========================================\n');
+
+  return {
+    critical: stage3Result.critical.sort((a, b) => b.score - a.score),
+    reference: stage3Result.reference.sort((a, b) => b.score - a.score)
+  };
 }
 
 export default { filterAndSummarizeWithAI };

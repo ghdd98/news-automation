@@ -9,7 +9,7 @@ import { collectAllCategoryNews } from './collectors/categoryRss.js';
 // 카테고리 뉴스: 경제, 정치, 사회, 해외
 
 // 필터
-import { deduplicateNews } from './filters/deduplicator.js';
+import { deduplicateNews, deduplicateWithClustering } from './filters/deduplicator.js';
 import { preFilterNews } from './filters/preFilter.js';
 import { filterAndSummarizeWithAI } from './filters/aiFilter.js';
 
@@ -50,9 +50,13 @@ async function main() {
         console.log('\n🎯 [사전 필터링]');
         const preFiltered = preFilterNews(uniqueNews);
 
-        // 4. AI 분석 (중요도 점수)
-        console.log('\n🤖 [AI 분석 단계]');
-        const { critical, reference } = await filterAndSummarizeWithAI(preFiltered);
+        // 3.5. 클러스터링 중복 제거 (유사 뉴스 그룹화, 그룹당 최대 3개)
+        console.log('\n📊 [클러스터링 중복 제거]');
+        const clusteredNews = deduplicateWithClustering(preFiltered, 3);
+
+        // 4. AI 분석 (3단계 파이프라인: Groq)
+        console.log('\n🤖 [AI 분석 단계 - 3단계 파이프라인]');
+        const { critical, reference } = await filterAndSummarizeWithAI(clusteredNews);
 
         // 6. 저장
         console.log('\n💾 [저장 단계]');
