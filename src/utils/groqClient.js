@@ -59,22 +59,21 @@ const gemmaModel = genAI.getGenerativeModel({ model: 'gemma-3-27b-it' });
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-// 모든 모델을 순서대로 하나의 리스트로 관리
+// 모든 모델을 순서대로 하나의 리스트로 관리 (Groq 공식 문서 기준)
 const ALL_MODELS = [
-    // Groq Primary (1~7)
-    { type: 'groq', name: 'openai/gpt-oss-120b' },
-    { type: 'groq', name: 'openai/gpt-oss-20b' },
-    { type: 'groq', name: 'openai/gpt-oss-safeguard-20b' },
-    { type: 'groq', name: 'moonshotai/kimi-k2-instruct' },
-    { type: 'groq', name: 'moonshotai/kimi-k2-instruct-0905' },
-    { type: 'groq', name: 'llama-3.3-70b-versatile' },
-    { type: 'groq', name: 'qwen/qwen3-32b' },
-    // Google Gemma (8)
+    // Production Models (안정적)
+    { type: 'groq', name: 'openai/gpt-oss-120b' },           // GPT OSS 120B
+    { type: 'groq', name: 'openai/gpt-oss-20b' },            // GPT OSS 20B
+    { type: 'groq', name: 'llama-3.3-70b-versatile' },       // Llama 3.3 70B
+    { type: 'groq', name: 'llama-3.1-8b-instant' },          // Llama 3.1 8B (14.4K RPD!)
+    // Preview Models
+    { type: 'groq', name: 'openai/gpt-oss-safeguard-20b' },  // Safety GPT OSS 20B
+    { type: 'groq', name: 'moonshotai/kimi-k2-instruct-0905' }, // Kimi K2
+    { type: 'groq', name: 'qwen/qwen3-32b' },                // Qwen3-32B
+    { type: 'groq', name: 'meta-llama/llama-4-maverick-17b-128e-instruct' }, // Llama 4 Maverick
+    { type: 'groq', name: 'meta-llama/llama-4-scout-17b-16e-instruct' },     // Llama 4 Scout
+    // Google Gemma (마지막 백업)
     { type: 'gemma', name: 'gemma-3-27b-it' },
-    // Groq Secondary (9~11)
-    { type: 'groq', name: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
-    { type: 'groq', name: 'meta-llama/llama-4-scout-17b-16e-instruct' },
-    { type: 'groq', name: 'llama-3.1-8b-instant' }, // 14.4K RPD - 거의 무한
 ];
 
 // 현재 사용 중인 모델 인덱스 (한도 초과 시 다음으로 이동)
@@ -113,12 +112,16 @@ async function callGroqWithFallback(models, prompt, maxRetries = 3) {
 
             } catch (error) {
                 const errorMsg = error.message || '';
+                const errorCode = error.status || error.code || '';
 
-                // Rate limit 에러 시 다음 모델로
+                // 모델 관련 에러 또는 Rate limit 에러 시 다음 모델로
                 if (errorMsg.includes('429') || errorMsg.includes('rate') ||
                     errorMsg.includes('quota') || errorMsg.includes('limit') ||
-                    errorMsg.includes('exceeded')) {
-                    console.log(`   ⚠️ ${modelInfo.name} 한도 초과, 다음 모델로 전환...`);
+                    errorMsg.includes('exceeded') || errorMsg.includes('400') ||
+                    errorMsg.includes('404') || errorMsg.includes('not found') ||
+                    errorMsg.includes('invalid') || errorMsg.includes('unsupported') ||
+                    errorCode === 400 || errorCode === 404 || errorCode === 429) {
+                    console.log(`   ⚠️ ${modelInfo.name} 에러 (${errorCode || errorMsg.slice(0, 30)}), 다음 모델로 전환...`);
                     currentModelIndex = idx + 1;
                     break; // 다음 모델로
                 }
@@ -127,6 +130,10 @@ async function callGroqWithFallback(models, prompt, maxRetries = 3) {
                 if (retry < maxRetries - 1) {
                     console.log(`   ⏳ ${modelInfo.name} 에러 (${retry + 1}/${maxRetries}), 2초 후 재시도...`);
                     await sleep(2000);
+                } else {
+                    // 재시도 다 소진 시 다음 모델로
+                    console.log(`   ⚠️ ${modelInfo.name} 재시도 실패, 다음 모델로 전환...`);
+                    currentModelIndex = idx + 1;
                 }
             }
         }
