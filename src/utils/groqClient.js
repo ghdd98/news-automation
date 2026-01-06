@@ -28,13 +28,19 @@ const STAGE2_MODELS = [
     'moonshotai/kimi-k2-instruct-0905'            // 백업2 (1K RPD)
 ];
 
-// Stage 3: 최종 분류
+// Stage 3: 최종 분류 (Groq 모델들)
 const STAGE3_MODELS = [
     'openai/gpt-oss-120b',                        // 메인 (1K RPD)
     'openai/gpt-oss-20b',                         // 백업1
     'openai/gpt-oss-safeguard-20b',               // 백업2
-    'meta-llama/llama-4-scout-17b-16e-instruct'   // 최후 백업
+    'qwen/qwen3-32b',                             // 백업3 (1K RPD)
+    'meta-llama/llama-4-scout-17b-16e-instruct'   // 백업4 (1K RPD)
 ];
+
+// Gemini 백업 모델 (Groq 모두 실패 시)
+import { GoogleGenerativeAI } from '@google/generative-ai';
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const gemmaModel = genAI.getGenerativeModel({ model: 'gemma-3-27b-it' });
 
 // ==================== 헬퍼 함수 ====================
 
@@ -95,8 +101,19 @@ async function callGroqWithFallback(models, prompt, maxRetries = 3) {
         }
     }
 
-    // 모든 모델 실패 시
-    throw new Error('모든 Groq 모델 호출 실패');
+    // 모든 Groq 모델 실패 시 Gemma-3-27b로 fallback
+    console.log('   🔄 모든 Groq 모델 한도 초과, Gemma-3-27b로 전환...');
+    try {
+        const result = await gemmaModel.generateContent(prompt);
+        const text = result.response.text();
+        if (text.trim()) {
+            return text;
+        }
+    } catch (gemmaError) {
+        console.error('   ❌ Gemma-3-27b도 실패:', gemmaError.message);
+    }
+
+    throw new Error('모든 AI 모델 호출 실패 (Groq + Gemini)');
 }
 
 /**
