@@ -326,4 +326,4 @@ export async function stage3Analysis(newsItem) {
 }
 
 // 모델 목록 export (테스트용)
-export { STAGE1_MODELS, STAGE2_MODELS, STAGE3_MODELS };
+export { STAGE1_MODELS, STAGE2_MODELS, STAGE3_GROQ_PRIMARY, STAGE3_GROQ_SECONDARY };
