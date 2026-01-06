@@ -1,80 +1,51 @@
 /**
  * Groq API 클라이언트
- * 3단계 AI 파이프라인용 모델 관리
+ * AI 파이프라인용 모델 관리 (Groq + Gemma 백업)
  */
 
 import Groq from 'groq-sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Groq 클라이언트 초기화
+// ==================== API 클라이언트 초기화 ====================
+
+// Groq 클라이언트
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY
 });
 
-// ==================== Stage별 모델 정의 ====================
-
-// Stage 1: 노이즈 필터링 (1-3점 제거)
-const STAGE1_MODELS = [
-    'llama-3.1-8b-instant',  // 메인 (14.4K RPD)
-    'allam-2-7b'             // 백업 (7K RPD)
-];
-
-// Stage 2: 4-5점 경계 분석
-const STAGE2_MODELS = [
-    'qwen/qwen3-32b',                             // 메인 (1K RPD, 60 RPM)
-    'meta-llama/llama-4-scout-17b-16e-instruct',  // 백업1 (1K RPD)
-    'moonshotai/kimi-k2-instruct-0905'            // 백업2 (1K RPD)
-];
-
-// Stage 3: 최종 분류 - Groq 모델 (1차 그룹)
-const STAGE3_GROQ_PRIMARY = [
-    'openai/gpt-oss-120b',                          // 1. 메인 (1K RPD)
-    'openai/gpt-oss-20b',                           // 2. 백업 (1K RPD)
-    'openai/gpt-oss-safeguard-20b',                 // 3. 백업 (1K RPD)
-    'moonshotai/kimi-k2-instruct',                  // 4. kimi-k2 기본 (1K RPD)
-    'moonshotai/kimi-k2-instruct-0905',             // 5. kimi-k2 0905 버전 (1K RPD)
-    'llama-3.3-70b-versatile',                      // 6. 안정+강성능 (1K RPD)
-    'qwen/qwen3-32b',                               // 7. ArenaHard 높음 (1K RPD)
-];
-
-// Stage 3: 최종 분류 - Groq 모델 (2차 그룹, Gemini 후 사용)
-const STAGE3_GROQ_SECONDARY = [
-    'meta-llama/llama-4-maverick-17b-128e-instruct', // 8. MMLU Pro 59.6 (1K RPD)
-    'meta-llama/llama-4-scout-17b-16e-instruct',     // 9. MMLU Pro 52.2 (1K RPD)
-    'llama-3.1-8b-instant',                          // 10. 최소품질/최대안정 (14.4K RPD)
-];
-
-// Gemini 백업 모델 (7번째 - Groq 1차 그룹 후 사용)
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// Gemini API - Gemma 모델들 (Groq 실패 시 백업)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const gemmaModel = genAI.getGenerativeModel({ model: 'gemma-3-27b-it' });
+const gemmaModels = {
+    'gemma-3-27b-it': genAI.getGenerativeModel({ model: 'gemma-3-27b-it' }),
+    'gemma-3-12b-it': genAI.getGenerativeModel({ model: 'gemma-3-12b-it' }),
+    'gemma-3-4b-it': genAI.getGenerativeModel({ model: 'gemma-3-4b-it' }),
+};
 
 // ==================== 헬퍼 함수 ====================
 
-/**
- * 지연 함수
- */
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-// 모든 모델을 순서대로 하나의 리스트로 관리 (고용량 모델 우선)
+
+// 모든 모델을 순서대로 하나의 리스트로 관리 (Groq 먼저, Gemma는 백업)
 const ALL_MODELS = [
-    // 최우선: 14.4K RPD로 가장 여유
+    // Groq 모델들 (먼저 시도)
     { type: 'groq', name: 'llama-3.1-8b-instant' },          // 14.4K RPD!
-    // Production Models
     { type: 'groq', name: 'llama-3.3-70b-versatile' },       // Llama 3.3 70B
     { type: 'groq', name: 'openai/gpt-oss-120b' },           // GPT OSS 120B
     { type: 'groq', name: 'openai/gpt-oss-20b' },            // GPT OSS 20B
-    // Preview Models
-    { type: 'groq', name: 'openai/gpt-oss-safeguard-20b' },  // Safety GPT OSS 20B
-    { type: 'groq', name: 'moonshotai/kimi-k2-instruct-0905' }, // Kimi K2
-    { type: 'groq', name: 'qwen/qwen3-32b' },                // Qwen3-32B
+    { type: 'groq', name: 'openai/gpt-oss-safeguard-20b' },
+    { type: 'groq', name: 'moonshotai/kimi-k2-instruct-0905' },
+    { type: 'groq', name: 'qwen/qwen3-32b' },
     { type: 'groq', name: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
     { type: 'groq', name: 'meta-llama/llama-4-scout-17b-16e-instruct' },
-    // Google Gemma (마지막 백업)
+    // Gemma 모델들 (Groq 실패 시 백업)
     { type: 'gemma', name: 'gemma-3-27b-it' },
+    { type: 'gemma', name: 'gemma-3-12b-it' },
+    { type: 'gemma', name: 'gemma-3-4b-it' },
 ];
 
 // 현재 사용 중인 모델 인덱스 (한도 초과 시 다음으로 이동)
@@ -103,7 +74,8 @@ async function callGroqWithFallback(models, prompt, maxRetries = 3) {
                     text = response.choices[0]?.message?.content || '';
                 } else if (modelInfo.type === 'gemma') {
                     // Google Gemma API 호출
-                    const result = await gemmaModel.generateContent(prompt);
+                    const model = gemmaModels[modelInfo.name];
+                    const result = await model.generateContent(prompt);
                     text = result.response.text();
                 }
 
@@ -322,4 +294,4 @@ export async function stage3Analysis(newsItem) {
 }
 
 // 모델 목록 export (테스트용)
-export { STAGE1_MODELS, STAGE2_MODELS, STAGE3_GROQ_PRIMARY, STAGE3_GROQ_SECONDARY };
+export { ALL_MODELS };
