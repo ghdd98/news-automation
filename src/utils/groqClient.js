@@ -30,19 +30,8 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// 모든 모델을 순서대로 하나의 리스트로 관리 (Groq 먼저, Gemma는 백업)
+// Gemma 모델만 사용 (Groq는 계속 실패하므로 비활성화)
 const ALL_MODELS = [
-    // Groq 모델들 (먼저 시도)
-    { type: 'groq', name: 'llama-3.1-8b-instant' },          // 14.4K RPD!
-    { type: 'groq', name: 'llama-3.3-70b-versatile' },       // Llama 3.3 70B
-    { type: 'groq', name: 'openai/gpt-oss-120b' },           // GPT OSS 120B
-    { type: 'groq', name: 'openai/gpt-oss-20b' },            // GPT OSS 20B
-    { type: 'groq', name: 'openai/gpt-oss-safeguard-20b' },
-    { type: 'groq', name: 'moonshotai/kimi-k2-instruct-0905' },
-    { type: 'groq', name: 'qwen/qwen3-32b' },
-    { type: 'groq', name: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
-    { type: 'groq', name: 'meta-llama/llama-4-scout-17b-16e-instruct' },
-    // Gemma 모델들 (Groq 실패 시 백업)
     { type: 'gemma', name: 'gemma-3-27b-it' },
     { type: 'gemma', name: 'gemma-3-12b-it' },
     { type: 'gemma', name: 'gemma-3-4b-it' },
