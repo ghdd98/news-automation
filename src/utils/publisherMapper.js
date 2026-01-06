@@ -8,6 +8,7 @@ const DOMAIN_MAP = {
     'mk.co.kr': '매일경제',
     'sedaily.com': '서울경제',
     'yonhapnews.co.kr': '연합뉴스',
+    'yonhapnewstv.co.kr': '연합뉴스TV',
     'yna.co.kr': '연합뉴스',
 
     // IT/산업
