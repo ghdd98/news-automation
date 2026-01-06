@@ -1,5 +1,6 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { getPublisherFromUrl } from '../utils/publisherMapper.js';
 
 dotenv.config();
 
@@ -18,17 +19,21 @@ export async function searchNaverNews(query, display = 20, sort = 'date') {
             }
         });
 
-        return response.data.items.map(item => ({
-            title: cleanHtml(item.title),
-            description: cleanHtml(item.description),
-            link: item.originallink || item.link,
-            pubDate: new Date(item.pubDate),
-            source: 'naver-api'
-        }));
+        return response.data.items.map(item => {
+            const link = item.originallink || item.link;
+            return {
+                title: cleanHtml(item.title),
+                description: cleanHtml(item.description),
+                link: link,
+                pubDate: new Date(item.pubDate),
+                source: 'naver-api',
+                publisher: getPublisherFromUrl(link) // URL에서 언론사 추출
+            };
+        });
     } catch (error) {
         console.error(`🚨 네이버 뉴스 검색 오류 (${query}):`);
         if (error.response) {
-            // 네이버 서버가 보낸 구체적인 에러 메시지 (예: 인증 실패, 한도 초과 등)
+            // 네이버 서버가 보낸 구체적인 에러 메시지
             console.error('   Status:', error.response.status);
             console.error('   Data:', JSON.stringify(error.response.data));
         } else {
@@ -65,7 +70,7 @@ export async function collectNaverNews(keywordsByIndustry) {
             // 2. 정확도순(sim) 20개
             const newsSim = await searchNaverNews(keyword, 20, 'sim');
 
-            // 합치기 (중복은 나중에 전체 deduplicator에서 걸러짐)
+            // 합치기
             const news = [...newsDate, ...newsSim];
             for (const item of news) {
                 // 24시간 이내 뉴스만 수집

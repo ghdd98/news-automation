@@ -1,4 +1,5 @@
 import Parser from 'rss-parser';
+import { getPublisherFromUrl } from '../utils/publisherMapper.js';
 
 const parser = new Parser({
     customFields: {
@@ -25,6 +26,11 @@ export async function searchGoogleNews(query) {
             if (lastHyphenIndex > 0) {
                 title = item.title.substring(0, lastHyphenIndex);
                 publisher = item.title.substring(lastHyphenIndex + 3);
+            }
+
+            // publisher가 없으면 URL에서 추출 시도
+            if (!publisher) {
+                publisher = getPublisherFromUrl(item.link);
             }
 
             return {
