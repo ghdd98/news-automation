@@ -11,10 +11,13 @@ dotenv.config();
 
 // ==================== API 클라이언트 초기화 ====================
 
-// Groq 클라이언트
-const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY
-});
+// Groq 클라이언트 (API 키가 있을 때만 초기화)
+let groq = null;
+if (process.env.GROQ_API_KEY) {
+    groq = new Groq({
+        apiKey: process.env.GROQ_API_KEY
+    });
+}
 
 // Gemini API - Gemma 모델들 (Groq 실패 시 백업)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -30,11 +33,24 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Gemma 모델만 사용 (Groq는 계속 실패하므로 비활성화)
+// 모델 사용 순서 (사용자 지정)
 const ALL_MODELS = [
+    // 1-3: GPT-OSS 모델
+    { type: 'groq', name: 'openai/gpt-oss-120b' },
+    { type: 'groq', name: 'openai/gpt-oss-20b' },
+    { type: 'groq', name: 'openai/gpt-oss-safeguard-20b' },
+    // 4-5: Kimi 모델
+    { type: 'groq', name: 'moonshotai/kimi-k2-instruct' },
+    { type: 'groq', name: 'moonshotai/kimi-k2-instruct-0905' },
+    // 6: Llama 3.3
+    { type: 'groq', name: 'llama-3.3-70b-versatile' },
+    // 7: Qwen
+    { type: 'groq', name: 'qwen/qwen3-32b' },
+    // 8: Google Gemma (중간 백업)
     { type: 'gemma', name: 'gemma-3-27b-it' },
-    { type: 'gemma', name: 'gemma-3-12b-it' },
-    { type: 'gemma', name: 'gemma-3-4b-it' },
+    // 9-10: Llama 4
+    { type: 'groq', name: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
+    { type: 'groq', name: 'meta-llama/llama-4-scout-17b-16e-instruct' },
 ];
 
 // 현재 사용 중인 모델 인덱스 (한도 초과 시 다음으로 이동)
@@ -53,6 +69,12 @@ async function callGroqWithFallback(models, prompt, maxRetries = 3) {
                 let text = '';
 
                 if (modelInfo.type === 'groq') {
+                    // Groq API 키가 없으면 스킵
+                    if (!groq) {
+                        console.log(`   ⚠️ GROQ_API_KEY 없음, 다음 모델로...`);
+                        currentModelIndex = idx + 1;
+                        break;
+                    }
                     // Groq API 호출
                     const response = await groq.chat.completions.create({
                         model: modelInfo.name,
@@ -213,60 +235,28 @@ export async function stage2Analysis(newsItem) {
  * @returns {Promise<{score: number, keywords: string[], category: string}>}
  */
 export async function stage3Analysis(newsItem) {
-    const prompt = `당신은 취업준비생을 위한 한국 경제/산업 뉴스 분석 전문가입니다.
+    const prompt = `뉴스 분석. 중요도 1-10점 평가.
 
-## 분석 대상
 제목: ${newsItem.title}
-설명: ${newsItem.description || '(없음)'}
-산업: ${newsItem.industry || '(미분류)'}
+설명: ${(newsItem.description || '').slice(0, 100)}
 
-## 점수 기준 (1-10점)
+점수기준:
+1-4: 무관/광고/정치정쟁/연예
+5-6: 참고(동향,신제품,소규모투자)
+7-8: 중요(실적,대형수주,설비증설)
+9-10: 핵심(M&A,정부정책,조단위투자)
 
-### 1-3점: 무관한 뉴스 → 제외
-- 스포츠, 연예, 정치(단순 정쟁), 사건사고
-- 광고성/홍보성 콘텐츠
-- 단순 이벤트/경품/할인 소식
-- 추적 산업(반도체, 자동차, 조선, 방산, IT)과 무관
-
-### 4점: 경계 뉴스 → 제외
-- 산업 관련이지만 투자/취업에 실질적 도움 없음
-- 단순 인사이동, 사소한 행사 참가
-- 인터뷰/칼럼/의견 기사
-- 이미 알려진 정보의 반복
-
-### 5-6점: 참고 뉴스 → 저장
-- 산업 동향 파악에 유용
-- 신제품/서비스 출시
-- 1000억원 미만 투자/계약
-- 채용 계획/공고
-- 컨퍼런스/전시회 주요 발표
-
-### 7-8점: 중요 뉴스 → 핵심 저장
-- 분기/연간 실적 발표
-- 대형 수주 (수천억~조원)
-- 공장/설비 증설 발표
-- 핵심 기술/특허 획득
-- 주요 파트너십 체결
-- 임원급 인사 변동
-
-### 9-10점: 핵심 뉴스 → 핵심 저장
-- 시장에 큰 영향 미치는 뉴스
-- M&A, 합병, 분할
-- 정부 대규모 정책 (보조금, 규제)
-- CEO 교체, 대규모 구조조정
-- 조 단위 투자/수주
-
-## 응답 형식
-반드시 아래 JSON으로만 응답:
-{"score": 숫자, "keywords": ["키워드1", "키워드2"], "reason": "한줄 판단근거"}`;
+JSON만 응답: {"s":점수,"k":["키워드1","키워드2"]}`;
 
     try {
         const response = await callGroqWithFallback(STAGE3_MODELS, prompt);
         const parsed = parseJsonSafely(response);
 
-        if (parsed && typeof parsed.score === 'number') {
-            const score = Math.min(10, Math.max(1, parsed.score));
-            const keywords = Array.isArray(parsed.keywords) ? parsed.keywords.slice(0, 5) : [];
+        // 새 형식: {"s": 점수, "k": ["키워드"]} 또는 기존 형식 지원
+        if (parsed && (typeof parsed.s === 'number' || typeof parsed.score === 'number')) {
+            const score = Math.min(10, Math.max(1, parsed.s || parsed.score));
+            const keywords = Array.isArray(parsed.k) ? parsed.k.slice(0, 5) :
+                Array.isArray(parsed.keywords) ? parsed.keywords.slice(0, 5) : [];
 
             return {
                 score,
