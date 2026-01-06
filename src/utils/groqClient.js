@@ -59,19 +59,20 @@ const gemmaModel = genAI.getGenerativeModel({ model: 'gemma-3-27b-it' });
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-// 모든 모델을 순서대로 하나의 리스트로 관리 (Groq 공식 문서 기준)
+// 모든 모델을 순서대로 하나의 리스트로 관리 (고용량 모델 우선)
 const ALL_MODELS = [
-    // Production Models (안정적)
+    // 최우선: 14.4K RPD로 가장 여유
+    { type: 'groq', name: 'llama-3.1-8b-instant' },          // 14.4K RPD!
+    // Production Models
+    { type: 'groq', name: 'llama-3.3-70b-versatile' },       // Llama 3.3 70B
     { type: 'groq', name: 'openai/gpt-oss-120b' },           // GPT OSS 120B
     { type: 'groq', name: 'openai/gpt-oss-20b' },            // GPT OSS 20B
-    { type: 'groq', name: 'llama-3.3-70b-versatile' },       // Llama 3.3 70B
-    { type: 'groq', name: 'llama-3.1-8b-instant' },          // Llama 3.1 8B (14.4K RPD!)
     // Preview Models
     { type: 'groq', name: 'openai/gpt-oss-safeguard-20b' },  // Safety GPT OSS 20B
     { type: 'groq', name: 'moonshotai/kimi-k2-instruct-0905' }, // Kimi K2
     { type: 'groq', name: 'qwen/qwen3-32b' },                // Qwen3-32B
-    { type: 'groq', name: 'meta-llama/llama-4-maverick-17b-128e-instruct' }, // Llama 4 Maverick
-    { type: 'groq', name: 'meta-llama/llama-4-scout-17b-16e-instruct' },     // Llama 4 Scout
+    { type: 'groq', name: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
+    { type: 'groq', name: 'meta-llama/llama-4-scout-17b-16e-instruct' },
     // Google Gemma (마지막 백업)
     { type: 'gemma', name: 'gemma-3-27b-it' },
 ];
@@ -111,8 +112,15 @@ async function callGroqWithFallback(models, prompt, maxRetries = 3) {
                 }
 
             } catch (error) {
-                const errorMsg = error.message || '';
+                const errorMsg = error.message || String(error);
                 const errorCode = error.status || error.code || '';
+
+                // 첫 번째 에러는 항상 상세 출력 (디버깅용)
+                if (idx === currentModelIndex && retry === 0) {
+                    console.log(`   🔍 [DEBUG] 모델: ${modelInfo.name}`);
+                    console.log(`   🔍 [DEBUG] 에러코드: ${errorCode}`);
+                    console.log(`   🔍 [DEBUG] 에러메시지: ${errorMsg.slice(0, 100)}`);
+                }
 
                 // 모델 관련 에러 또는 Rate limit 에러 시 다음 모델로
                 if (errorMsg.includes('429') || errorMsg.includes('rate') ||
@@ -121,7 +129,7 @@ async function callGroqWithFallback(models, prompt, maxRetries = 3) {
                     errorMsg.includes('404') || errorMsg.includes('not found') ||
                     errorMsg.includes('invalid') || errorMsg.includes('unsupported') ||
                     errorCode === 400 || errorCode === 404 || errorCode === 429) {
-                    console.log(`   ⚠️ ${modelInfo.name} 에러 (${errorCode || errorMsg.slice(0, 30)}), 다음 모델로 전환...`);
+                    console.log(`   ⚠️ ${modelInfo.name} 에러, 다음 모델로 전환...`);
                     currentModelIndex = idx + 1;
                     break; // 다음 모델로
                 }
@@ -132,7 +140,7 @@ async function callGroqWithFallback(models, prompt, maxRetries = 3) {
                     await sleep(2000);
                 } else {
                     // 재시도 다 소진 시 다음 모델로
-                    console.log(`   ⚠️ ${modelInfo.name} 재시도 실패, 다음 모델로 전환...`);
+                    console.log(`   ⚠️ ${modelInfo.name} 재시도 실패, 다음 모델로...`);
                     currentModelIndex = idx + 1;
                 }
             }
