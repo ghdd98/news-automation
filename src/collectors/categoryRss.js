@@ -56,7 +56,7 @@ const TRUSTED_DOMESTIC = {
         // 종합지 (정치면 강함)
         '조선일보', 'chosun', '중앙일보', 'joongang', '동아일보', 'donga',
         '한겨레', 'hani', '경향신문', 'khan', '국민일보', 'kmib',
-        '문화일보', 'munhwa', '세계일보', 'segye',
+        '세계일보', 'segye',
         // 통신사
         '연합뉴스', 'yonhap', '뉴시스', 'newsis', '뉴스1', 'news1',
         // 방송
