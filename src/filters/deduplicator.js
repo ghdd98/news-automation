@@ -25,7 +25,7 @@ const CONFIG = {
     TOP_K: 20,               // 각 문서당 상위 K개만 비교
 
     // 대표 기사 선택
-    MAX_REPRESENTATIVES: 3,   // 그룹당 최대 대표 기사
+    MAX_REPRESENTATIVES: 2,   // 그룹당 최대 대표 기사 (2개로 축소)
 
     // 주요 언론사 (신뢰도 점수)
     TRUSTED_SOURCES: {

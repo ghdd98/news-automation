@@ -50,9 +50,9 @@ async function main() {
         console.log('\n🎯 [사전 필터링]');
         const preFiltered = preFilterNews(uniqueNews);
 
-        // 3.5. 클러스터링 중복 제거 (유사 뉴스 그룹화, 그룹당 최대 3개)
+        // 3.5. 클러스터링 중복 제거 (유사 뉴스 그룹화, 그룹당 최대 2개)
         console.log('\n📊 [클러스터링 중복 제거]');
-        const clusteredNews = deduplicateWithClustering(preFiltered, 3);
+        const clusteredNews = deduplicateWithClustering(preFiltered, 2);
 
         // 4. AI 분석 (3단계 파이프라인: Groq)
         console.log('\n🤖 [AI 분석 단계 - 3단계 파이프라인]');

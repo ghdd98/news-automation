@@ -1,11 +1,10 @@
 /**
- * 3단계 AI 파이프라인 필터
- * - Stage 1: 노이즈 필터링 (1-3점 제거)
- * - Stage 2: 경계 분석 (4점 제거, 5+ 통과)
- * - Stage 3: 최종 분류 (핵심 vs 참고)
+ * 2단계 AI 파이프라인 필터 (간소화 버전)
+ * - Stage 1: 경계 분석 (1-4점 제거, 5+ 통과) - qwen3-32b
+ * - Stage 2: 최종 분류 (핵심 vs 참고) - gpt-oss-120b
  */
 
-import { stage1Analysis, stage2Analysis, stage3Analysis } from '../utils/groqClient.js';
+import { stage2Analysis, stage3Analysis } from '../utils/groqClient.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -16,57 +15,16 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ==================== 3단계 파이프라인 ====================
+// ==================== 2단계 파이프라인 ====================
 
 /**
- * Stage 1: 노이즈 필터링
- * 1-3점 뉴스 제거 (스포츠, 연예, 광고 등)
+ * Stage 1: 경계 분석 (1-4점 제거, 5+ 통과)
+ * 기존 Stage 2를 Stage 1로 변경
  */
 async function runStage1(newsItems) {
-  console.log(`\n🔰 [Stage 1] 노이즈 필터링 시작 (${newsItems.length}개)`);
-  console.log(`   📍 모델: llama-3.1-8b-instant (백업: allam-2-7b)`);
-
-  const passed = [];
-  const excluded = [];
-  let processed = 0;
-
-  for (const item of newsItems) {
-    try {
-      const result = await stage1Analysis(item);
-
-      if (result.pass) {
-        passed.push({ ...item, stage1Score: result.score });
-      } else {
-        excluded.push(item);
-      }
-
-      processed++;
-      if (processed % 50 === 0) {
-        console.log(`   처리 중... ${processed}/${newsItems.length} (통과: ${passed.length}, 제외: ${excluded.length})`);
-      }
-
-      // Rate limit 준수 (분당 30개 = 2초 간격)
-      await sleep(2000);
-
-    } catch (error) {
-      console.error(`   Stage1 에러: ${item.title.slice(0, 30)}...`);
-      // 에러 시 안전하게 통과
-      passed.push({ ...item, stage1Score: 4 });
-    }
-  }
-
-  console.log(`   ✅ Stage 1 완료: ${newsItems.length}개 → ${passed.length}개 통과 (${excluded.length}개 제외)`);
-
-  return { passed, excluded };
-}
-
-/**
- * Stage 2: 경계 분석
- * 4점 제거, 5점 이상만 통과
- */
-async function runStage2(newsItems) {
-  console.log(`\n🎯 [Stage 2] 경계 분석 시작 (${newsItems.length}개)`);
+  console.log(`\n🎯 [Stage 1] 경계 분석 시작 (${newsItems.length}개)`);
   console.log(`   📍 모델: qwen/qwen3-32b (백업: llama-4-scout, kimi-k2)`);
+  console.log(`   📍 기준: 1-4점 제거, 5점 이상 통과`);
 
   const passed = [];
   const excluded = [];
@@ -77,7 +35,7 @@ async function runStage2(newsItems) {
       const result = await stage2Analysis(item);
 
       if (result.pass) {
-        passed.push({ ...item, stage2Score: result.score });
+        passed.push({ ...item, stage1Score: result.score });
       } else {
         excluded.push(item);
       }
@@ -91,24 +49,25 @@ async function runStage2(newsItems) {
       await sleep(1000);
 
     } catch (error) {
-      console.error(`   Stage2 에러: ${item.title.slice(0, 30)}...`);
+      console.error(`   Stage1 에러: ${item.title.slice(0, 30)}...`);
       // 에러 시 안전하게 통과
-      passed.push({ ...item, stage2Score: 5 });
+      passed.push({ ...item, stage1Score: 5 });
     }
   }
 
-  console.log(`   ✅ Stage 2 완료: ${newsItems.length}개 → ${passed.length}개 통과 (${excluded.length}개 제외)`);
+  console.log(`   ✅ Stage 1 완료: ${newsItems.length}개 → ${passed.length}개 통과 (${excluded.length}개 제외)`);
 
   return { passed, excluded };
 }
 
 /**
- * Stage 3: 최종 분류
- * 7점 이상 = 핵심, 5-6점 = 참고
+ * Stage 2: 최종 분류 (핵심 vs 참고)
+ * 기존 Stage 3를 Stage 2로 변경
  */
-async function runStage3(newsItems) {
-  console.log(`\n⭐ [Stage 3] 최종 분류 시작 (${newsItems.length}개)`);
+async function runStage2(newsItems) {
+  console.log(`\n⭐ [Stage 2] 최종 분류 시작 (${newsItems.length}개)`);
   console.log(`   📍 모델: gpt-oss-120b (백업: 20b, safeguard-20b, llama-4-scout)`);
+  console.log(`   📍 기준: 7+ = 핵심, 5-6 = 참고`);
 
   const critical = [];
   const reference = [];
@@ -144,13 +103,13 @@ async function runStage3(newsItems) {
       await sleep(2000);
 
     } catch (error) {
-      console.error(`   Stage3 에러: ${item.title.slice(0, 30)}...`);
+      console.error(`   Stage2 에러: ${item.title.slice(0, 30)}...`);
       // 에러 시 참고로 분류
       reference.push({ ...item, score: 5, keywords: [] });
     }
   }
 
-  console.log(`   ✅ Stage 3 완료: 핵심 ${critical.length}개, 참고 ${reference.length}개`);
+  console.log(`   ✅ Stage 2 완료: 핵심 ${critical.length}개, 참고 ${reference.length}개`);
 
   return { critical, reference };
 }
@@ -158,40 +117,36 @@ async function runStage3(newsItems) {
 // ==================== 메인 함수 ====================
 
 /**
- * 3단계 AI 파이프라인 실행
+ * 2단계 AI 파이프라인 실행
  */
 export async function filterAndSummarizeWithAI(newsItems) {
   console.log('\n========================================');
-  console.log('🤖 3단계 AI 파이프라인 시작');
+  console.log('🤖 2단계 AI 파이프라인 시작');
   console.log(`   📊 입력: ${newsItems.length}개 뉴스`);
   console.log('========================================');
 
   const startTime = Date.now();
 
-  // Stage 1: 노이즈 필터링 (1-3점 제거)
+  // Stage 1: 경계 분석 (1-4점 제거)
   const stage1Result = await runStage1(newsItems);
 
-  // Stage 2: 경계 분석 (4점 제거)
+  // Stage 2: 최종 분류 (핵심 vs 참고)
   const stage2Result = await runStage2(stage1Result.passed);
-
-  // Stage 3: 최종 분류 (핵심 vs 참고)
-  const stage3Result = await runStage3(stage2Result.passed);
 
   const elapsed = Math.round((Date.now() - startTime) / 1000);
 
   console.log('\n========================================');
-  console.log('✅ 3단계 AI 파이프라인 완료');
-  console.log(`   ⏱️ 소요 시간: ${elapsed}초`);
+  console.log('✅ 2단계 AI 파이프라인 완료');
+  console.log(`   ⏱️ 소요 시간: ${Math.floor(elapsed / 60)}분 ${elapsed % 60}초`);
   console.log(`   📊 입력: ${newsItems.length}개`);
-  console.log(`   🔰 Stage 1 통과: ${stage1Result.passed.length}개`);
-  console.log(`   🎯 Stage 2 통과: ${stage2Result.passed.length}개`);
-  console.log(`   🔥 핵심: ${stage3Result.critical.length}개`);
-  console.log(`   📎 참고: ${stage3Result.reference.length}개`);
+  console.log(`   🎯 Stage 1 통과: ${stage1Result.passed.length}개`);
+  console.log(`   🔥 핵심: ${stage2Result.critical.length}개`);
+  console.log(`   📎 참고: ${stage2Result.reference.length}개`);
   console.log('========================================\n');
 
   return {
-    critical: stage3Result.critical.sort((a, b) => b.score - a.score),
-    reference: stage3Result.reference.sort((a, b) => b.score - a.score)
+    critical: stage2Result.critical.sort((a, b) => b.score - a.score),
+    reference: stage2Result.reference.sort((a, b) => b.score - a.score)
   };
 }
 
