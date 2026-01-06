@@ -86,15 +86,8 @@ const MAJOR_SOURCES = [
     'biz.chosun.com', '조선비즈', 'Chosunbiz',
     'heraldcorp', '헤럴드경제', '헤럴드',
 
-    // 3순위 - 주요 일간지 및 통신사
-    'chosun.com', '조선일보',
-    'donga.com', '동아일보',
-    'joongang.co.kr', '중앙일보',
-    'hani.co.kr', '한겨레',
-    'khan.co.kr', '경향신문',
-    'news1.kr', '뉴스1',
-    'newsis.com', '뉴시스',
-    'munhwa.com', '문화일보'
+    // 3순위 - 동아일보만 유지
+    'donga.com', '동아일보'
 ];
 
 // ==================== 해외 주요 언론사 (글로벌) ====================
