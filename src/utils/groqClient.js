@@ -33,9 +33,10 @@ const STAGE3_GROQ_PRIMARY = [
     'openai/gpt-oss-120b',                          // 1. 메인 (1K RPD)
     'openai/gpt-oss-20b',                           // 2. 백업 (1K RPD)
     'openai/gpt-oss-safeguard-20b',                 // 3. 백업 (1K RPD)
-    'moonshotai/kimi-k2-instruct-0905',             // 4. MMLU 89.5 (1K RPD)
-    'llama-3.3-70b-versatile',                      // 5. 안정+강성능 (1K RPD)
-    'qwen/qwen3-32b',                               // 6. ArenaHard 높음 (1K RPD)
+    'moonshotai/kimi-k2-instruct',                  // 4. kimi-k2 기본 (1K RPD)
+    'moonshotai/kimi-k2-instruct-0905',             // 5. kimi-k2 0905 버전 (1K RPD)
+    'llama-3.3-70b-versatile',                      // 6. 안정+강성능 (1K RPD)
+    'qwen/qwen3-32b',                               // 7. ArenaHard 높음 (1K RPD)
 ];
 
 // Stage 3: 최종 분류 - Groq 모델 (2차 그룹, Gemini 후 사용)
