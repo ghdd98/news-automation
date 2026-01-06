@@ -59,100 +59,81 @@ const gemmaModel = genAI.getGenerativeModel({ model: 'gemma-3-27b-it' });
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+// 모든 모델을 순서대로 하나의 리스트로 관리
+const ALL_MODELS = [
+    // Groq Primary (1~7)
+    { type: 'groq', name: 'openai/gpt-oss-120b' },
+    { type: 'groq', name: 'openai/gpt-oss-20b' },
+    { type: 'groq', name: 'openai/gpt-oss-safeguard-20b' },
+    { type: 'groq', name: 'moonshotai/kimi-k2-instruct' },
+    { type: 'groq', name: 'moonshotai/kimi-k2-instruct-0905' },
+    { type: 'groq', name: 'llama-3.3-70b-versatile' },
+    { type: 'groq', name: 'qwen/qwen3-32b' },
+    // Google Gemma (8)
+    { type: 'gemma', name: 'gemma-3-27b-it' },
+    // Groq Secondary (9~11)
+    { type: 'groq', name: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
+    { type: 'groq', name: 'meta-llama/llama-4-scout-17b-16e-instruct' },
+    { type: 'groq', name: 'llama-3.1-8b-instant' }, // 14.4K RPD - 거의 무한
+];
 
-// 현재 사용 중인 모델 단계와 인덱스 (한도 초과 시 기억)
-let currentPhase = 1;  // 1: Groq Primary, 2: Gemma, 3: Groq Secondary
-let currentPrimaryIndex = 0;
-let currentSecondaryIndex = 0;
-let gemmaFailed = false;
+// 현재 사용 중인 모델 인덱스 (한도 초과 시 다음으로 이동)
+let currentModelIndex = 0;
 
 /**
- * 다단계 AI 호출 (Groq 1차 → Gemma → Groq 2차 순서)
+ * 단순화된 AI 호출 (모든 모델을 순서대로 시도)
  */
 async function callGroqWithFallback(models, prompt, maxRetries = 3) {
-    // Phase 1: Groq Primary 모델들 (1~6번)
-    if (currentPhase === 1) {
-        for (let modelIdx = currentPrimaryIndex; modelIdx < STAGE3_GROQ_PRIMARY.length; modelIdx++) {
-            const model = STAGE3_GROQ_PRIMARY[modelIdx];
+    // 현재 인덱스부터 모든 모델 시도
+    for (let idx = currentModelIndex; idx < ALL_MODELS.length; idx++) {
+        const modelInfo = ALL_MODELS[idx];
 
-            for (let retry = 0; retry < maxRetries; retry++) {
-                try {
+        for (let retry = 0; retry < maxRetries; retry++) {
+            try {
+                let text = '';
+
+                if (modelInfo.type === 'groq') {
+                    // Groq API 호출
                     const response = await groq.chat.completions.create({
-                        model: model,
+                        model: modelInfo.name,
                         messages: [{ role: 'user', content: prompt }],
                         temperature: 0.3,
                         max_tokens: 500
                     });
-                    const text = response.choices[0]?.message?.content || '';
-                    if (text.trim()) return text;
-                } catch (error) {
-                    const errorMsg = error.message || '';
-                    if (errorMsg.includes('429') || errorMsg.includes('rate') || errorMsg.includes('quota') || errorMsg.includes('limit')) {
-                        console.log(`   ⚠️ ${model} 한도 초과, 다음 모델로 전환...`);
-                        currentPrimaryIndex = modelIdx + 1;
-                        break;
-                    }
-                    if (retry < maxRetries - 1) {
-                        console.log(`   ⏳ ${model} 에러 (${retry + 1}/${maxRetries}), 2초 후 재시도...`);
-                        await sleep(2000);
-                    }
+                    text = response.choices[0]?.message?.content || '';
+                } else if (modelInfo.type === 'gemma') {
+                    // Google Gemma API 호출
+                    const result = await gemmaModel.generateContent(prompt);
+                    text = result.response.text();
                 }
-            }
-        }
-        currentPhase = 2; // Gemma로 전환
-    }
 
-    // Phase 2: Gemma-3-27b (7번째)
-    if (currentPhase === 2 && !gemmaFailed) {
-        console.log('   🔄 Groq 1차 한도 초과, Gemma-3-27b로 전환...');
-        try {
-            const result = await gemmaModel.generateContent(prompt);
-            const text = result.response.text();
-            if (text.trim()) return text;
-        } catch (gemmaError) {
-            if (gemmaError.message?.includes('429') || gemmaError.message?.includes('rate')) {
-                console.log('   ⚠️ Gemma-3-27b 한도 초과, Groq 2차 그룹으로 전환...');
-                gemmaFailed = true;
-                currentPhase = 3;
-            } else {
-                console.log(`   ⏳ Gemma-3-27b 에러, Groq 2차로 전환...`);
-                currentPhase = 3;
-            }
-        }
-    }
+                if (text.trim()) {
+                    return text; // 성공!
+                }
 
-    // Phase 3: Groq Secondary 모델들 (8~10번)
-    if (currentPhase === 3) {
-        for (let modelIdx = currentSecondaryIndex; modelIdx < STAGE3_GROQ_SECONDARY.length; modelIdx++) {
-            const model = STAGE3_GROQ_SECONDARY[modelIdx];
+            } catch (error) {
+                const errorMsg = error.message || '';
 
-            for (let retry = 0; retry < maxRetries; retry++) {
-                try {
-                    const response = await groq.chat.completions.create({
-                        model: model,
-                        messages: [{ role: 'user', content: prompt }],
-                        temperature: 0.3,
-                        max_tokens: 500
-                    });
-                    const text = response.choices[0]?.message?.content || '';
-                    if (text.trim()) return text;
-                } catch (error) {
-                    const errorMsg = error.message || '';
-                    if (errorMsg.includes('429') || errorMsg.includes('rate') || errorMsg.includes('quota') || errorMsg.includes('limit')) {
-                        console.log(`   ⚠️ ${model} 한도 초과, 다음 모델로 전환...`);
-                        currentSecondaryIndex = modelIdx + 1;
-                        break;
-                    }
-                    if (retry < maxRetries - 1) {
-                        console.log(`   ⏳ ${model} 에러 (${retry + 1}/${maxRetries}), 2초 후 재시도...`);
-                        await sleep(2000);
-                    }
+                // Rate limit 에러 시 다음 모델로
+                if (errorMsg.includes('429') || errorMsg.includes('rate') ||
+                    errorMsg.includes('quota') || errorMsg.includes('limit') ||
+                    errorMsg.includes('exceeded')) {
+                    console.log(`   ⚠️ ${modelInfo.name} 한도 초과, 다음 모델로 전환...`);
+                    currentModelIndex = idx + 1;
+                    break; // 다음 모델로
+                }
+
+                // 일시적 에러 시 재시도
+                if (retry < maxRetries - 1) {
+                    console.log(`   ⏳ ${modelInfo.name} 에러 (${retry + 1}/${maxRetries}), 2초 후 재시도...`);
+                    await sleep(2000);
                 }
             }
         }
     }
 
-    throw new Error('모든 AI 모델 호출 실패 (Groq 1차 + Gemma + Groq 2차)');
+    // 모든 모델 실패 (llama-3.1-8b-instant도 실패하면 심각한 문제)
+    throw new Error('모든 AI 모델 호출 실패 (11개 모델 전부 실패)');
 }
 
 /**
