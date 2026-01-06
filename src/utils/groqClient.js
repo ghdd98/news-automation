@@ -45,15 +45,15 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// 현재 사용 중인 모델 인덱스 (한도 초과 시 다음 요청도 이 모델부터 시작)
+let currentStage3ModelIndex = 0;
+
 /**
- * Groq API 호출 (fallback 지원)
- * @param {string[]} models - 시도할 모델 목록
- * @param {string} prompt - 프롬프트
- * @param {number} maxRetries - 최대 재시도 횟수
- * @returns {Promise<string>} - AI 응답 텍스트
+ * Groq API 호출 (fallback 지원 + 모델 인덱스 기억)
  */
 async function callGroqWithFallback(models, prompt, maxRetries = 3) {
-    for (let modelIdx = 0; modelIdx < models.length; modelIdx++) {
+    // 이전에 한도 초과된 모델이 있으면 그 다음부터 시작
+    for (let modelIdx = currentStage3ModelIndex; modelIdx < models.length; modelIdx++) {
         const model = models[modelIdx];
 
         for (let retry = 0; retry < maxRetries; retry++) {
@@ -79,9 +79,10 @@ async function callGroqWithFallback(models, prompt, maxRetries = 3) {
             } catch (error) {
                 const errorMsg = error.message || '';
 
-                // Rate limit 에러 시 다음 모델로
-                if (errorMsg.includes('429') || errorMsg.includes('rate') || errorMsg.includes('quota')) {
+                // Rate limit 에러 시 다음 모델로 전환 + 인덱스 기억
+                if (errorMsg.includes('429') || errorMsg.includes('rate') || errorMsg.includes('quota') || errorMsg.includes('limit')) {
                     console.log(`   ⚠️ ${model} 한도 초과, 다음 모델로 전환...`);
+                    currentStage3ModelIndex = modelIdx + 1; // 다음 요청도 이 모델부터
                     break; // 다음 모델로
                 }
 
