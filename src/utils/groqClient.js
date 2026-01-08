@@ -117,18 +117,16 @@ async function callWithFallback(prompt, maxRetries = 3) {
  * 뉴스 분석 (1-10점 + 키워드)
  */
 export async function stage3Analysis(newsItem) {
-    const prompt = `뉴스 분석. 중요도 1-10점 평가.
+    const prompt = `뉴스 중요도 1-10점.
 
 제목: ${newsItem.title}
 설명: ${(newsItem.description || '').slice(0, 100)}
 
-점수기준:
-1-4: 무관/광고/정치정쟁/연예
-5-6: 참고(동향,신제품,소규모투자)
-7-8: 중요(실적,대형수주,설비증설)
-9-10: 핵심(M&A,정부정책,조단위투자)
+[1-4점:제외] 광고/홍보, 행사/전시/세미나, 인터뷰/기고, 수상/CSR, 채용/인사, 단순출시(수치없음), 단순시황코멘트
+[7+조건] 실적/가이던스, 수주/계약/공급, 증설/공장/양산, M&A/지분, 규제/보조금/정책, 리콜/사고 중 1개이상 OR 금액(억/조)/물량/수치(%/대/톤) 명시
+[5-6] 7+조건 미충족시 1-4로 하향
 
-JSON만 응답: {"s":점수,"k":["키워드1","키워드2"]}`;
+JSON만: {"s":점수,"k":["키워드1","키워드2"]}`;
 
     try {
         const response = await callWithFallback(prompt);
