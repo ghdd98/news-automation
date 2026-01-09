@@ -45,16 +45,17 @@ jobs:
           git config --global user.email "ghdd98@users.noreply.github.com"
           
           if [ -d "data" ]; then
-            # 1. 현재 뉴스 데이터를 임시 저장
+            # 1. 현재 뉴스 데이터를 임시 저장 (삭제된 파일 상태 포함)
             cp -r data/ /tmp/news_data_backup/
             
             # 2. 원격 최신 상태로 리셋 (충돌 방지)
             git fetch origin main
             git reset --hard origin/main
             
-            # 3. 새 뉴스 데이터 복원 후 커밋
+            # 3. data 폴더 비우고 백업에서 복원 (삭제 반영)
+            rm -rf data/*
             cp -r /tmp/news_data_backup/* data/
-            git add data/
+            git add -A data/
             
             if ! git diff --staged --quiet; then
               git commit -m "📰 News Update: $(TZ='Asia/Seoul' date +'%Y-%m-%d %H:%M')"
