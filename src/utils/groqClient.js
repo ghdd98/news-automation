@@ -1,8 +1,8 @@
 /**
  * AI 뉴스 분석 클라이언트
- * Groq (성능순 fallback) + Google AI Studio 3개 모델 백업
+ * Groq (성능순 fallback) + Google AI Studio Gemma 3개 모델 백업
  * 모델 성능순: gpt-oss-120b → llama-3.3-70b → qwen3-32b → gpt-oss-20b → llama-4-scout → llama-3.1-8b
- *           → gemini-2.5-flash → gemma-4-26b → gemini-2.5-flash-lite
+ *           → gemma-4-31b → gemma-4-26b → gemma-3-27b
  */
 
 import Groq from 'groq-sdk';
@@ -42,9 +42,9 @@ function getGoogleModel(modelName) {
 // 5. llama-4-scout: 멀티모달, 긴 컨텍스트 (Preview)
 // 6. llama-3.1-8b: 초경량, 최저 지연시간 (Production)
 // [Google AI Studio - 백업] (RPM 15 / RPD 1.5K 각각)
-// 7. gemini-2.5-flash: Gemini급 추론, 무료 최고 성능 (Stable)
-// 8. gemma-4-26b: 오픈모델, MoE 구조 (Stable)
-// 9. gemini-2.5-flash-lite: 최경량, 최저 비용 (Stable)
+// 7. gemma-4-31b: Dense 최고 성능, 추론/에이전트 최적화 (Stable)
+// 8. gemma-4-26b: MoE 구조, 효율적 고성능 (Stable)
+// 9. gemma-3-27b: 구세대 최종 안전망 (Stable)
 const ALL_MODELS = [
     { type: 'groq', name: 'openai/gpt-oss-120b' },
     { type: 'groq', name: 'llama-3.3-70b-versatile' },
@@ -52,9 +52,9 @@ const ALL_MODELS = [
     { type: 'groq', name: 'openai/gpt-oss-20b' },
     { type: 'groq', name: 'meta-llama/llama-4-scout-17b-16e-instruct' },
     { type: 'groq', name: 'llama-3.1-8b-instant' },
-    { type: 'google', name: 'gemini-2.5-flash' },
+    { type: 'google', name: 'gemma-4-31b-it' },
     { type: 'google', name: 'gemma-4-26b-a4b-it' },
-    { type: 'google', name: 'gemini-2.5-flash-lite' },
+    { type: 'google', name: 'gemma-3-27b-it' },
 ];
 
 let currentModelIndex = 0;
