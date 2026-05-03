@@ -1,7 +1,7 @@
 /**
  * AI 뉴스 분석 클라이언트
- * Groq (성능순 fallback) + Google Gemma 백업
- * 모델 성능순: gpt-oss-120b → llama-3.3-70b → qwen3-32b → gpt-oss-20b → llama-4-scout → llama-3.1-8b → gemma-3-27b
+ * Groq (성능순 fallback) + Google Gemma 4 백업
+ * 모델 성능순: gpt-oss-120b → llama-3.3-70b → qwen3-32b → gpt-oss-20b → llama-4-scout → llama-3.1-8b → gemma-4-26b
  */
 
 import Groq from 'groq-sdk';
@@ -18,9 +18,9 @@ if (process.env.GROQ_API_KEY) {
     groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 }
 
-// Google Gemma 클라이언트
+// Google Gemma 4 클라이언트
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const gemmaModel = genAI.getGenerativeModel({ model: 'gemma-3-27b-it' });
+const gemmaModel = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
 
 // ==================== 모델 목록 (성능순) ====================
 
@@ -31,7 +31,7 @@ const gemmaModel = genAI.getGenerativeModel({ model: 'gemma-3-27b-it' });
 // 4. gpt-oss-20b: 경량 GPT-OSS (Production)
 // 5. llama-4-scout: 멀티모달, 긴 컨텍스트 (Preview)
 // 6. llama-3.1-8b: 초경량, 최저 지연시간 (Production)
-// 7. gemma-3-27b-it: 최종 백업 (Google API)
+// 7. gemma-4-26b: 최종 백업 (Google API, RPM 15 / RPD 1.5K)
 const ALL_MODELS = [
     { type: 'groq', name: 'openai/gpt-oss-120b' },
     { type: 'groq', name: 'llama-3.3-70b-versatile' },
@@ -39,7 +39,7 @@ const ALL_MODELS = [
     { type: 'groq', name: 'openai/gpt-oss-20b' },
     { type: 'groq', name: 'meta-llama/llama-4-scout-17b-16e-instruct' },
     { type: 'groq', name: 'llama-3.1-8b-instant' },
-    { type: 'gemma', name: 'gemma-3-27b-it' },
+    { type: 'gemma', name: 'gemma-4-26b-a4b-it' },
 ];
 
 let currentModelIndex = 0;
