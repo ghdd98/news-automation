@@ -1,6 +1,7 @@
 /**
  * AI 뉴스 분석 클라이언트
- * Groq + Google Gemma 백업
+ * Groq (성능순 fallback) + Google Gemma 백업
+ * 모델 성능순: gpt-oss-120b → llama-3.3-70b → qwen3-32b → gpt-oss-20b → llama-4-scout → llama-3.1-8b → gemma-3-27b
  */
 
 import Groq from 'groq-sdk';
@@ -21,20 +22,24 @@ if (process.env.GROQ_API_KEY) {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const gemmaModel = genAI.getGenerativeModel({ model: 'gemma-3-27b-it' });
 
-// ==================== 모델 목록 ====================
+// ==================== 모델 목록 (성능순) ====================
 
-// 사용 순서 (사용자 지정)
+// 벤치마크 성능순 정렬 (2026.05 기준)
+// 1. gpt-oss-120b: MMLU-Pro 90%, 최고 추론 성능 (Production)
+// 2. llama-3.3-70b: 안정적 범용 성능 (Production)
+// 3. qwen3-32b: 우수한 가성비, 빠른 추론 (Preview)
+// 4. gpt-oss-20b: 경량 GPT-OSS (Production)
+// 5. llama-4-scout: 멀티모달, 긴 컨텍스트 (Preview)
+// 6. llama-3.1-8b: 초경량, 최저 지연시간 (Production)
+// 7. gemma-3-27b-it: 최종 백업 (Google API)
 const ALL_MODELS = [
     { type: 'groq', name: 'openai/gpt-oss-120b' },
-    { type: 'groq', name: 'openai/gpt-oss-20b' },
-    { type: 'groq', name: 'openai/gpt-oss-safeguard-20b' },
-    { type: 'groq', name: 'moonshotai/kimi-k2-instruct' },
-    { type: 'groq', name: 'moonshotai/kimi-k2-instruct-0905' },
     { type: 'groq', name: 'llama-3.3-70b-versatile' },
     { type: 'groq', name: 'qwen/qwen3-32b' },
-    { type: 'gemma', name: 'gemma-3-27b-it' },
-    { type: 'groq', name: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
+    { type: 'groq', name: 'openai/gpt-oss-20b' },
     { type: 'groq', name: 'meta-llama/llama-4-scout-17b-16e-instruct' },
+    { type: 'groq', name: 'llama-3.1-8b-instant' },
+    { type: 'gemma', name: 'gemma-3-27b-it' },
 ];
 
 let currentModelIndex = 0;
