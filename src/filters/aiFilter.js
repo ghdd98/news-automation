@@ -1,7 +1,7 @@
 /**
  * 단일 Stage AI 파이프라인 필터 (최종 간소화 버전)
  * - 하나의 Stage로 1-4점 제외 + 핵심/참고 분류 동시 처리
- * - gpt-oss-120b → llama-3.3-70b → qwen3-32b → gpt-oss-20b → llama-4-scout → llama-3.1-8b → gemma-4-26b fallback
+ * - Groq 6개 → Google AI Studio 3개 (gemini-2.5-flash → gemma-4-26b → gemini-2.5-flash-lite) fallback
  */
 
 import { stage3Analysis } from '../utils/groqClient.js';
@@ -25,7 +25,8 @@ function sleep(ms) {
  */
 async function runSingleStage(newsItems) {
   console.log(`\n⭐ [AI 분석] 단일 Stage 시작 (${newsItems.length}개)`);
-  console.log(`   📍 모델: gpt-oss-120b → llama-3.3-70b → qwen3-32b → gpt-oss-20b → llama-4-scout → llama-3.1-8b → gemma-4-26b`);
+  console.log(`   📍 Groq: gpt-oss-120b → llama-3.3-70b → qwen3-32b → gpt-oss-20b → llama-4-scout → llama-3.1-8b`);
+  console.log(`   📍 Google: gemini-2.5-flash → gemma-4-26b → gemini-2.5-flash-lite`);
   console.log(`   📍 기준: 1-4점 제외, 5-6점 참고, 7+ 핵심`);
 
   const critical = [];

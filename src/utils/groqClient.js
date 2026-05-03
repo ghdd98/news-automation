@@ -1,7 +1,8 @@
 /**
  * AI 뉴스 분석 클라이언트
- * Groq (성능순 fallback) + Google Gemma 4 백업
- * 모델 성능순: gpt-oss-120b → llama-3.3-70b → qwen3-32b → gpt-oss-20b → llama-4-scout → llama-3.1-8b → gemma-4-26b
+ * Groq (성능순 fallback) + Google AI Studio 3개 모델 백업
+ * 모델 성능순: gpt-oss-120b → llama-3.3-70b → qwen3-32b → gpt-oss-20b → llama-4-scout → llama-3.1-8b
+ *           → gemini-2.5-flash → gemma-4-26b → gemini-2.5-flash-lite
  */
 
 import Groq from 'groq-sdk';
@@ -18,20 +19,32 @@ if (process.env.GROQ_API_KEY) {
     groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 }
 
-// Google Gemma 4 클라이언트
+// Google AI Studio 클라이언트 (Gemini + Gemma 모델 공유)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const gemmaModel = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
+
+// Google 모델 인스턴스 캐시 (동적 생성)
+const googleModelCache = {};
+function getGoogleModel(modelName) {
+    if (!googleModelCache[modelName]) {
+        googleModelCache[modelName] = genAI.getGenerativeModel({ model: modelName });
+    }
+    return googleModelCache[modelName];
+}
 
 // ==================== 모델 목록 (성능순) ====================
 
 // 벤치마크 성능순 정렬 (2026.05 기준)
+// [Groq - 메인]
 // 1. gpt-oss-120b: MMLU-Pro 90%, 최고 추론 성능 (Production)
 // 2. llama-3.3-70b: 안정적 범용 성능 (Production)
 // 3. qwen3-32b: 우수한 가성비, 빠른 추론 (Preview)
 // 4. gpt-oss-20b: 경량 GPT-OSS (Production)
 // 5. llama-4-scout: 멀티모달, 긴 컨텍스트 (Preview)
 // 6. llama-3.1-8b: 초경량, 최저 지연시간 (Production)
-// 7. gemma-4-26b: 최종 백업 (Google API, RPM 15 / RPD 1.5K)
+// [Google AI Studio - 백업] (RPM 15 / RPD 1.5K 각각)
+// 7. gemini-2.5-flash: Gemini급 추론, 무료 최고 성능 (Stable)
+// 8. gemma-4-26b: 오픈모델, MoE 구조 (Stable)
+// 9. gemini-2.5-flash-lite: 최경량, 최저 비용 (Stable)
 const ALL_MODELS = [
     { type: 'groq', name: 'openai/gpt-oss-120b' },
     { type: 'groq', name: 'llama-3.3-70b-versatile' },
@@ -39,7 +52,9 @@ const ALL_MODELS = [
     { type: 'groq', name: 'openai/gpt-oss-20b' },
     { type: 'groq', name: 'meta-llama/llama-4-scout-17b-16e-instruct' },
     { type: 'groq', name: 'llama-3.1-8b-instant' },
-    { type: 'gemma', name: 'gemma-4-26b-a4b-it' },
+    { type: 'google', name: 'gemini-2.5-flash' },
+    { type: 'google', name: 'gemma-4-26b-a4b-it' },
+    { type: 'google', name: 'gemini-2.5-flash-lite' },
 ];
 
 let currentModelIndex = 0;
@@ -80,8 +95,9 @@ async function callWithFallback(prompt, maxRetries = 3) {
                         max_tokens: 500
                     });
                     text = response.choices[0]?.message?.content || '';
-                } else if (model.type === 'gemma') {
-                    const result = await gemmaModel.generateContent(prompt);
+                } else if (model.type === 'google') {
+                    const googleModel = getGoogleModel(model.name);
+                    const result = await googleModel.generateContent(prompt);
                     text = result.response.text();
                 }
 
